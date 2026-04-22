@@ -5,7 +5,6 @@ using System.Collections.Generic;
 public class EnemySpawner : MonoBehaviour
 {
     [SerializeField] private GameObject[] enemyPrefabs;
-    private Vector3[] spawnPoints;
     [SerializeField] private float timeBetweenSpawns = 2f;
     [SerializeField] private int poolSize = 10;
 
@@ -27,8 +26,11 @@ public class EnemySpawner : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(timeBetweenSpawns);
+            yield return new WaitForSecondsRealtime(timeBetweenSpawns);
+
             Camera cam = Camera.main;
+            if (cam == null) yield break; 
+
             float height = cam.orthographicSize;
             float width = height * cam.aspect;
             Vector3 camPos = cam.transform.position;
@@ -75,26 +77,5 @@ public class EnemySpawner : MonoBehaviour
         {
             Destroy(enemy);
         }
-    }
-
-    private void DebugEnemyCount()
-    {
-        // Đếm enemy đang active
-        Enemy[] activeEnemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
-
-        Dictionary<string, int> countByType = new Dictionary<string, int>();
-        foreach (Enemy enemy in activeEnemies)
-        {
-            string type = enemy.GetType().Name;
-            if (!countByType.ContainsKey(type))
-                countByType[type] = 0;
-            countByType[type]++;
-        }
-
-        string log = $"Tổng enemy: {activeEnemies.Length}\n";
-        foreach (var kvp in countByType)
-            log += $"  {kvp.Key}: {kvp.Value}\n";
-
-        Debug.Log(log);
     }
 }

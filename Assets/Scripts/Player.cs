@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class Player : MonoBehaviour
@@ -10,11 +11,13 @@ public class Player : MonoBehaviour
     [SerializeField] private float maxHp = 100f;
     private float currentHp;
     [SerializeField] private Image hpBar;
+    [SerializeField] private GameManager gameManager;
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
+        gameManager = FindAnyObjectByType<GameManager>();
     }
     void Start()
     {
@@ -22,19 +25,25 @@ public class Player : MonoBehaviour
         UpdateHpBar();
     }
 
-  
+
     void Update()
     {
         MovePlayer();
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            gameManager.TogglePause();
+        }
     }
-
     void MovePlayer()
     {
         Vector2 playerInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         rb.linearVelocity = playerInput.normalized * speed;
-        if(playerInput.x < 0) {
+        if (playerInput.x < 0)
+        {
             spriteRenderer.flipX = true;
-        } else if(playerInput.x > 0) {
+        }
+        else if (playerInput.x > 0)
+        {
             spriteRenderer.flipX = false;
         }
         if (playerInput != Vector2.zero)
@@ -59,7 +68,9 @@ public class Player : MonoBehaviour
 
     private void Die()
     {
-        Destroy(gameObject);
+        Time.timeScale = 1f;
+        gameObject.SetActive(false);
+        SceneManager.LoadScene("GameOver");
     }
 
     private void UpdateHpBar()

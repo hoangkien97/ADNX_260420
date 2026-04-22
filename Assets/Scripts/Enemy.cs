@@ -81,24 +81,5 @@ public abstract class Enemy : MonoBehaviour
         }
     }
 
-    private void DebugEnemyCount()
-    {
-        // Đếm enemy đang active
-        Enemy[] activeEnemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
-
-        Dictionary<string, int> countByType = new Dictionary<string, int>();
-        foreach (Enemy enemy in activeEnemies)
-        {
-            string type = enemy.GetType().Name;
-            if (!countByType.ContainsKey(type))
-                countByType[type] = 0;
-            countByType[type]++;
-        }
-
-        string log = $"Tổng enemy: {activeEnemies.Length}\n";
-        foreach (var kvp in countByType)
-            log += $"  {kvp.Key}: {kvp.Value}\n";
-
-        Debug.Log(log);
-    }
+ 
 }
