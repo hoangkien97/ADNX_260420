@@ -7,8 +7,11 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private GameObject[] enemyPrefabs;
     [SerializeField] private float timeBetweenSpawns = 2f;
     [SerializeField] private int poolSize = 10;
-
     private List<GameObject> enemyPool;
+    [SerializeField] private float numberScale = 1.5f;
+    private int deadEnemiesCount = 0;
+    private int enemiesSpawnedThisWave = 0;
+    private float currentStatMultiplier = 1f;
 
     void Start()
     {
@@ -42,7 +45,12 @@ public class EnemySpawner : MonoBehaviour
             camPos + new Vector3(-width,  height, 0),
             camPos + new Vector3( width,  height, 0),
             };
-            SpawnEnemy(spawnPoints[Random.Range(0, spawnPoints.Length)]);
+
+            if (enemiesSpawnedThisWave < poolSize)
+            {
+                SpawnEnemy(spawnPoints[Random.Range(0, spawnPoints.Length)]);
+                enemiesSpawnedThisWave++;
+            }
         }
     }
 
@@ -63,7 +71,9 @@ public class EnemySpawner : MonoBehaviour
 
         enemy.transform.position = spawnPosition;
         enemy.SetActive(true);
-        enemy.GetComponent<Enemy>().Initialize(this);
+        Enemy e = enemy.GetComponent<Enemy>();
+        e.Initialize(this);
+        e.ApplyStatMultiplier(currentStatMultiplier);
     }
 
     public void ReturnEnemyToPool(GameObject enemy)
@@ -76,6 +86,27 @@ public class EnemySpawner : MonoBehaviour
         else
         {
             Destroy(enemy);
+        }
+    }
+
+    public void OnEnemyDied()
+    {
+        deadEnemiesCount++;
+        if (deadEnemiesCount >= poolSize)
+        {
+            int newPoolSize = Mathf.RoundToInt(poolSize * numberScale);
+            int addedEnemies = newPoolSize - poolSize;
+            poolSize = newPoolSize;
+            currentStatMultiplier *= numberScale;
+            deadEnemiesCount = 0;
+            enemiesSpawnedThisWave = 0; 
+
+            for (int i = 0; i < addedEnemies; i++)
+            {
+                GameObject enemyObj = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)]);
+                enemyObj.SetActive(false);
+                enemyPool.Add(enemyObj);
+            }
         }
     }
 }

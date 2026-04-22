@@ -3,7 +3,7 @@ using UnityEngine;
 public class HealEnemy : Enemy
 {
     [SerializeField] private GameObject healObject;
-    [SerializeField] private float healValue = 20f;
+    //[SerializeField] private float healValue = 20f;
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Player"))
@@ -33,12 +33,5 @@ public class HealEnemy : Enemy
         }
         base.Die();
 
-    }
-    private void HealPlayer ()
-    {
-        if (player != null)
-        {
-            player.Heal(healValue);
-        }
     }
 }

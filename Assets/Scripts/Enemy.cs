@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +15,12 @@ public abstract class Enemy : MonoBehaviour
     protected EnemySpawner spawner;
     private SpriteRenderer spriteRenderer;
 
+    private float baseMoveSpeed;
+    private float baseMaxHp;
+    private float baseEnterDamage;
+    private float baseStayDamage;
+    private bool statsInitialized = false;
+
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -22,6 +29,26 @@ public abstract class Enemy : MonoBehaviour
     public void Initialize(EnemySpawner spawner)
     {
         this.spawner = spawner;
+    }
+
+    public void ApplyStatMultiplier(float multiplier)
+    {
+        if (!statsInitialized)
+        {
+            baseMoveSpeed = enemyMoveSpeed;
+            baseMaxHp = maxHp;
+            baseEnterDamage = enterDamege;
+            baseStayDamage = stayDamege;
+            statsInitialized = true;
+        }
+
+        enemyMoveSpeed = baseMoveSpeed * multiplier;
+        maxHp = baseMaxHp * multiplier;
+        enterDamege = baseEnterDamage * multiplier;
+        stayDamege = baseStayDamage * multiplier;
+
+        currentHp = maxHp;
+        UpdateHpBar();
     }
 
     protected virtual void Start()
@@ -70,7 +97,15 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void Die()
     {
-        Destroy(gameObject);
+        if (spawner != null)
+        {
+            spawner.OnEnemyDied();
+            spawner.ReturnEnemyToPool(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     protected void UpdateHpBar()

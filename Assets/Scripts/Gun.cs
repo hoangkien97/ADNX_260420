@@ -12,13 +12,14 @@ public class Gun : MonoBehaviour
     [SerializeField] private int maxAmmo = 10;
     public int currentAmmo;
     [SerializeField] private TextMeshProUGUI ammoText;
+    [SerializeField] private AudioManager audioManager;
     void Start()
     {
         currentAmmo = maxAmmo;
         UpdateAmmoText();
     }
 
- 
+
     void Update()
     {
         RotateGun();
@@ -26,19 +27,19 @@ public class Gun : MonoBehaviour
         ReLoad();
     }
 
-    void RotateGun ()
+    void RotateGun()
     {
-        if(Input.mousePosition.x <0 || Input.mousePosition.y < 0 || Input.mousePosition.x > Screen.width || Input.mousePosition.y > Screen.height)
+        if (Input.mousePosition.x < 0 || Input.mousePosition.y < 0 || Input.mousePosition.x > Screen.width || Input.mousePosition.y > Screen.height)
         {
             return;
         }
-          
+
         Vector3 displacement = transform.position - Camera.main.ScreenToWorldPoint(Input.mousePosition);
         float angle = Mathf.Atan2(displacement.y, displacement.x) * Mathf.Rad2Deg;
 
         //Debug.Log($"[RotateGun] displacement: {displacement} | angle: {angle:F2}° | mousePos: {Input.mousePosition}");
         transform.rotation = Quaternion.Euler(new Vector3(0, 0, angle + rotateOffset));
-        if ( angle < -90 || angle > 90 )
+        if (angle < -90 || angle > 90)
         {
             transform.localScale = new Vector3(1, 1, 1);
         }
@@ -50,20 +51,23 @@ public class Gun : MonoBehaviour
 
     void Shoot()
     {
-      if (Input.GetMouseButtonDown(0) && Time.time >= nextshot && currentAmmo > 0) {
+        if (Input.GetMouseButtonDown(0) && Time.time >= nextshot && currentAmmo > 0)
+        {
             nextshot = Time.time + shotDelay;
             Instantiate(bulletPrefabs, firePos.position, firePos.rotation);
             currentAmmo--;
             UpdateAmmoText();
+            audioManager.PlayShootSound();
         }
     }
 
     void ReLoad()
     {
         if (Input.GetKeyDown(KeyCode.R))
-            {
-                currentAmmo = maxAmmo;
-                UpdateAmmoText();
+        {
+            currentAmmo = maxAmmo;
+            UpdateAmmoText();
+            audioManager.PlayReloadSound();
         }
     }
 
@@ -71,7 +75,7 @@ public class Gun : MonoBehaviour
     {
         if (ammoText != null)
         {
-            if(currentAmmo > 0)
+            if (currentAmmo > 0)
             {
                 ammoText.text = currentAmmo.ToString();
             }

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2146533880067042264}
   - component: {fileID: 1946810687898233323}
   - component: {fileID: 4592383674893122490}
+  - component: {fileID: -4495899329310486016}
   m_Layer: 0
   m_Name: Heal
   m_TagString: Heal
@@ -151,3 +152,16 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 2.4450002
+--- !u!114 &-4495899329310486016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1054870582348991868}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0bd915d1a22ebea4b93153cdee5fb852, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealItem
+  healValue: 50
