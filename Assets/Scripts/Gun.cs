@@ -10,7 +10,7 @@ public class Gun : MonoBehaviour
     [SerializeField] private float shotDelay = 0.5f;
     private float nextshot;
     [SerializeField] private int maxAmmo = 10;
-    public int currentAmmo;
+    private int currentAmmo;
     [SerializeField] private TextMeshProUGUI ammoText;
     [SerializeField] private AudioManager audioManager;
     void Start()
@@ -22,6 +22,8 @@ public class Gun : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale == 0) return;
+
         RotateGun();
         Shoot();
         ReLoad();

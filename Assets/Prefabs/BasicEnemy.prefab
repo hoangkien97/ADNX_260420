@@ -203,7 +203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c79714a0e5d53a4aab449e453a6c2eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BasicEnemy
-  enemyMoveSpeed: 2
+  enemyMoveSpeed: 1
   maxHp: 100
   hpBar: {fileID: 8967090399059834520}
   enterDamege: 10

@@ -9,6 +9,7 @@ public class PlayerBullet : MonoBehaviour
 
     void Start()
     {
+        damage += GameManager.BonusDamage;
         Destroy(gameObject, timeDestroy);
     }
 

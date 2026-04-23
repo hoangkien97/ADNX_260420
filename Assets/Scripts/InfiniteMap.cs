@@ -163,7 +163,7 @@ public class InfiniteMap : MonoBehaviour
         tile.SetActive(true);
         activeTiles[cell] = tile;
 
-        Debug.Log($"[Spawn] cell={cell} → world={CellToWorld(cell)} prefab={idx}");
+        //Debug.Log($"[Spawn] cell={cell} → world={CellToWorld(cell)} prefab={idx}");
     }
 
     GameObject GetFromPool(int idx)

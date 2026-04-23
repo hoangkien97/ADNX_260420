@@ -176,13 +176,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f7c919dba16e9408f605a709bff2a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HealEnemy
-  enemyMoveSpeed: 3
+  enemyMoveSpeed: 1
   maxHp: 150
   hpBar: {fileID: 4796836539763875921}
   enterDamege: 10
   stayDamege: 1
   healObject: {fileID: 1054870582348991868, guid: 22ad11a728f09f643a5f2bc09acbd6c7, type: 3}
-  healValue: 20
 --- !u!50 &2903823735480315631
 Rigidbody2D:
   serializedVersion: 5

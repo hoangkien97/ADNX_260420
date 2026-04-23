@@ -13,6 +13,7 @@ public class GameOverManager : MonoBehaviour
     }
     public void RestartGame()
     {
+        GameManager.CountCoin = 0;
         SceneManager.LoadScene("SampleScene");
     }
 }

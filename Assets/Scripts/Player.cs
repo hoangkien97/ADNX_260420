@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -21,6 +22,8 @@ public class Player : MonoBehaviour
     }
     void Start()
     {
+        speed += GameManager.BonusSpeed;
+        maxHp += GameManager.BonusMaxHP;
         currentHp = maxHp;
         UpdateHpBar();
     }
@@ -86,6 +89,19 @@ public class Player : MonoBehaviour
         currentHp += healAmount;
         currentHp = Mathf.Clamp(currentHp, 0, maxHp);
         UpdateHpBar();
+    }
+
+    public void AddMaxHP(float amount)
+    {
+        maxHp += amount;
+        currentHp += amount; 
+        currentHp = Mathf.Clamp(currentHp, 0, maxHp);
+        UpdateHpBar();
+    }
+
+    public void AddSpeed(float amount)
+    {
+        speed += amount;
     }
 
 }

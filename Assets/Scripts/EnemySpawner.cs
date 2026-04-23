@@ -9,6 +9,7 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private int poolSize = 10;
     private List<GameObject> enemyPool;
     [SerializeField] private float numberScale = 1.5f;
+    [SerializeField] private GameObject shopPanel;
     private int deadEnemiesCount = 0;
     private int enemiesSpawnedThisWave = 0;
     private float currentStatMultiplier = 1f;
@@ -29,7 +30,11 @@ public class EnemySpawner : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSecondsRealtime(timeBetweenSpawns);
+            yield return new WaitForSeconds(timeBetweenSpawns);
+            if (shopPanel != null && shopPanel.activeInHierarchy)
+            {
+                continue; 
+            }
 
             Camera cam = Camera.main;
             if (cam == null) yield break; 
@@ -57,18 +62,8 @@ public class EnemySpawner : MonoBehaviour
     private void SpawnEnemy(Vector3 spawnPosition)
     {
         if (enemyPool.Count == 0) return;
-
-        int index = Random.Range(0, enemyPool.Count);
-        GameObject enemy = enemyPool[index];
-        enemyPool.RemoveAt(index);
-
-        GameObject newPrefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
-        if (enemy.name != newPrefab.name + "(Clone)")
-        {
-            Destroy(enemy);
-            enemy = Instantiate(newPrefab);
-        }
-
+        GameObject enemy = enemyPool[0];
+        enemyPool.RemoveAt(0);
         enemy.transform.position = spawnPosition;
         enemy.SetActive(true);
         Enemy e = enemy.GetComponent<Enemy>();
@@ -78,6 +73,8 @@ public class EnemySpawner : MonoBehaviour
 
     public void ReturnEnemyToPool(GameObject enemy)
     {
+        if (enemy == null) return;
+
         if (enemyPool.Count < poolSize)
         {
             enemy.SetActive(false);
@@ -94,19 +91,32 @@ public class EnemySpawner : MonoBehaviour
         deadEnemiesCount++;
         if (deadEnemiesCount >= poolSize)
         {
-            int newPoolSize = Mathf.RoundToInt(poolSize * numberScale);
-            int addedEnemies = newPoolSize - poolSize;
-            poolSize = newPoolSize;
-            currentStatMultiplier *= numberScale;
-            deadEnemiesCount = 0;
-            enemiesSpawnedThisWave = 0; 
+            StartCoroutine(WaveCompletedRoutine());
+        }
+    }
 
-            for (int i = 0; i < addedEnemies; i++)
-            {
-                GameObject enemyObj = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)]);
-                enemyObj.SetActive(false);
-                enemyPool.Add(enemyObj);
-            }
+    private IEnumerator WaveCompletedRoutine()
+    {
+        yield return new WaitForSeconds(3f);
+
+        if (shopPanel != null)
+        {
+            shopPanel.SetActive(true);
+        }
+        Time.timeScale = 0f;
+
+        int newPoolSize = Mathf.RoundToInt(poolSize * numberScale);
+        int addedEnemies = newPoolSize - poolSize;
+        poolSize = newPoolSize;
+        currentStatMultiplier *= numberScale;
+        deadEnemiesCount = 0;
+        enemiesSpawnedThisWave = 0; 
+
+        for (int i = 0; i < addedEnemies; i++)
+        {
+            GameObject enemyObj = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)]);
+            enemyObj.SetActive(false);
+            enemyPool.Add(enemyObj);
         }
     }
 }

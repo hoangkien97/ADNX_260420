@@ -203,7 +203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 156bcc2917f165f4191eeed09d93c33b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CoinEnemy
-  enemyMoveSpeed: 4
+  enemyMoveSpeed: 1
   maxHp: 100
   hpBar: {fileID: 7421538949082028604}
   enterDamege: 15
