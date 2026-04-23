@@ -2,8 +2,12 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
-  tags: []
+  serializedVersion: 3
+  tags:
+  - PlayerBullet
+  - Enemy
+  - Coin
+  - Heal
   layers:
   - Default
   - TransparentFX
@@ -38,6 +42,45 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Ground
+    uniqueID: 3940660469
+    locked: 0
+  - name: Grass
+    uniqueID: 793150209
+    locked: 0
+  - name: Rock
+    uniqueID: 1768057385
+    locked: 0
+  - name: Tree
+    uniqueID: 802483385
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Player
+    uniqueID: 1509767873
+    locked: 0
+  - name: PlayerBullet
+    uniqueID: 2259258917
+    locked: 0
+  - name: Gun
+    uniqueID: 247253705
+    locked: 0
+  - name: Enemy
+    uniqueID: 2760853881
+    locked: 0
+  - name: Blood
+    uniqueID: 485561751
+    locked: 0
+  - name: HpBar
+    uniqueID: 1749069905
+    locked: 0
+  - name: Coin
+    uniqueID: 1926187437
+    locked: 0
+  - name: Heal
+    uniqueID: 3201601851
+    locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []
