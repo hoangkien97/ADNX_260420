@@ -8,6 +8,7 @@ TagManager:
   - Enemy
   - Coin
   - Heal
+  - Rock
   layers:
   - Default
   - TransparentFX

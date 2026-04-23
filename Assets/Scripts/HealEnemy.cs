@@ -20,7 +20,7 @@ public class HealEnemy : Enemy
         {
             if (player != null)
             {
-                player.TakeDamage(stayDamege /** Time.deltaTime*/);
+                player.TakeDamage(stayDamege * Time.deltaTime);
             }
         }
     }

@@ -5,11 +5,10 @@ public class CursorManager : MonoBehaviour
     [SerializeField] private Texture2D cursorNormal;
     [SerializeField] private Texture2D cursorShoot;
     [SerializeField] private Texture2D cursorReload;
-    private Vector2 hotSpot = new Vector2(0.5f, 0.5f);
 
     void Start()
     {
-        Cursor.SetCursor(cursorNormal, hotSpot, CursorMode.Auto);
+        SetCursorTexture(cursorNormal);
     }
 
     // Update is called once per frame
@@ -17,15 +16,27 @@ public class CursorManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            Cursor.SetCursor(cursorShoot, hotSpot, CursorMode.Auto);
+            SetCursorTexture(cursorShoot);
         }
         else if (Input.GetKeyDown(KeyCode.R))
         {
-            Cursor.SetCursor(cursorReload, hotSpot, CursorMode.Auto);
+            SetCursorTexture(cursorReload);
         }
         else if (Input.GetMouseButtonUp(0) || Input.GetKeyUp(KeyCode.R))
         {
-            Cursor.SetCursor(cursorNormal, hotSpot, CursorMode.Auto);
+            SetCursorTexture(cursorNormal);
         }
+    }
+
+    private void SetCursorTexture(Texture2D cursorTexture)
+    {
+        if (cursorTexture == null)
+        {
+            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+            return;
+        }
+
+        Vector2 hotSpot = new Vector2(cursorTexture.width * 0.5f, cursorTexture.height * 0.5f);
+        Cursor.SetCursor(cursorTexture, hotSpot, CursorMode.Auto);
     }
 }

@@ -97,6 +97,8 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void Die()
     {
+        GameManager.AddScore();
+
         if (spawner != null)
         {
             spawner.OnEnemyDied();

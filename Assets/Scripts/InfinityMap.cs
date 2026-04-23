@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class InfiniteMap : MonoBehaviour
+public class InfinityMap : MonoBehaviour
 {
     [Header("References")]
     public Transform player;

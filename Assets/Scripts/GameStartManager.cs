@@ -5,7 +5,7 @@ public class GameStartManager : MonoBehaviour
 {
     public void GameStart()
     {
-        ResetPlayerStats();
+        ResetRunState();
         SceneManager.LoadScene("SampleScene");
     }
     public void Quit()
@@ -13,12 +13,8 @@ public class GameStartManager : MonoBehaviour
         Application.Quit();
     }
 
-    private void ResetPlayerStats()
+    private void ResetRunState()
     {
-        PlayerPrefs.SetFloat("moveSpeed", 5f);
-        PlayerPrefs.SetFloat("maxHP", 500f);
-        PlayerPrefs.SetFloat("damage", 20f);
-        PlayerPrefs.SetInt("countCoin", 0);
-        //GameManager.Level = 1;
+        GameManager.ResetRunState();
     }
 }
