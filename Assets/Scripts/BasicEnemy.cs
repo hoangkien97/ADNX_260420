@@ -18,7 +18,7 @@ public class BasicEnemy : Enemy
         {
             if (player != null)
             {
-                player.TakeDamage(stayDamege * Time.deltaTime);
+                player.TakeDamage(stayDamege);
             }
         }
     }

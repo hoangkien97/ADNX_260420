@@ -105,9 +105,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ccf9369cc2305247a3ed4264117d6f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBullet
-  moveSpeed: 10
-  timeDestroy: 1
-  damage: 50
+  moveSpeed: 50
+  timeDestroy: 2
+  damage: 50000
   bloodPrefab: {fileID: 4485776828925550863, guid: 6a1b55d5a897e494fa1a3636d5b8abf8, type: 3}
 --- !u!61 &2802151033303715726
 BoxCollider2D:
