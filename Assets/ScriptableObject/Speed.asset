@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Speed
   m_EditorClassIdentifier: Assembly-CSharp::ShopItemSO
   title: Speed
-  description: Increase the character's movement speed.
+  description: Increase the character's speed.
   baseCost: 5
   itemType: 0
   effectValue: 2

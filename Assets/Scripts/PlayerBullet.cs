@@ -36,5 +36,10 @@ public class PlayerBullet : MonoBehaviour
             }
             Destroy(gameObject);
         }
-     }    
+        if (collision.CompareTag("Rock"))
+        {
+            Destroy(gameObject);
+        }
+
+    }
 }
