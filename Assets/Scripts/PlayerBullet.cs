@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class PlayerBullet : MonoBehaviour
 {
-    [SerializeField] private float moveSpeed  = 10f;
+    [SerializeField] private float moveSpeed = 10f;
     [SerializeField] private float timeDestroy = 1f;
     [SerializeField] private float damage = 50f;
     [SerializeField] private GameObject bloodPrefab;
@@ -13,7 +13,7 @@ public class PlayerBullet : MonoBehaviour
         Destroy(gameObject, timeDestroy);
     }
 
-    
+
     void Update()
     {
         MoveBullet();
@@ -23,8 +23,8 @@ public class PlayerBullet : MonoBehaviour
     {
         transform.Translate(Vector3.right * moveSpeed * Time.deltaTime);
     }
-     private void OnTriggerEnter2D(Collider2D collision)
-     {
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
         if (collision.CompareTag("Enemy"))
         {
             Enemy enemy = collision.GetComponent<Enemy>();

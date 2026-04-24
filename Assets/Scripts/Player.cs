@@ -94,7 +94,7 @@ public class Player : MonoBehaviour
     public void AddMaxHP(float amount)
     {
         maxHp += amount;
-        currentHp += amount; 
+        currentHp += amount;
         currentHp = Mathf.Clamp(currentHp, 0, maxHp);
         UpdateHpBar();
     }
