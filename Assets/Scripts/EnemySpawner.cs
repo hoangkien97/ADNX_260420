@@ -13,6 +13,7 @@ public class EnemySpawner : MonoBehaviour
     private int deadEnemiesCount = 0;
     private int enemiesSpawnedThisWave = 0;
     private float currentStatMultiplier = 1f;
+    [SerializeField] private int bonusCoin = 5;
 
     void Start()
     {
@@ -97,6 +98,7 @@ public class EnemySpawner : MonoBehaviour
 
     private IEnumerator WaveCompletedRoutine()
     {
+        GameManager.CountCoin += bonusCoin;
         yield return new WaitForSeconds(3f);
 
         if (shopPanel != null)

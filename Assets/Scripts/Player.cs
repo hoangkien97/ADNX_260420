@@ -13,6 +13,10 @@ public class Player : MonoBehaviour
     private float currentHp;
     [SerializeField] private Image hpBar;
     [SerializeField] private GameManager gameManager;
+
+    public float MaxHp => maxHp;
+    public float MoveSpeed => speed;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();

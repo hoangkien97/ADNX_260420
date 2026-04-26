@@ -7,6 +7,8 @@ public class PlayerBullet : MonoBehaviour
     [SerializeField] private float damage = 50f;
     [SerializeField] private GameObject bloodPrefab;
 
+    public float BaseDamage => damage;
+
     void Start()
     {
         damage += GameManager.BonusDamage;
