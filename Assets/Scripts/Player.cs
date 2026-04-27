@@ -13,6 +13,10 @@ public class Player : MonoBehaviour
     private float currentHp;
     [SerializeField] private Image hpBar;
     [SerializeField] private GameManager gameManager;
+
+    public float MaxHp => maxHp;
+    public float MoveSpeed => speed;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -94,7 +98,7 @@ public class Player : MonoBehaviour
     public void AddMaxHP(float amount)
     {
         maxHp += amount;
-        currentHp += amount; 
+        currentHp += amount;
         currentHp = Mathf.Clamp(currentHp, 0, maxHp);
         UpdateHpBar();
     }

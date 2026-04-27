@@ -13,6 +13,20 @@ public class Gun : MonoBehaviour
     private int currentAmmo;
     [SerializeField] private TextMeshProUGUI ammoText;
     [SerializeField] private AudioManager audioManager;
+
+    public float CurrentDamage
+    {
+        get
+        {
+            if (bulletPrefabs != null && bulletPrefabs.TryGetComponent<PlayerBullet>(out PlayerBullet bullet))
+            {
+                return bullet.BaseDamage + GameManager.BonusDamage;
+            }
+
+            return GameManager.BonusDamage;
+        }
+    }
+
     void Start()
     {
         currentAmmo = maxAmmo;

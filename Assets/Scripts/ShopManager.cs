@@ -10,6 +10,12 @@ public class ShopManager : MonoBehaviour
     public ShopTemplate[] shopPanels;
     public GameObject[] shopPanelsGO;
     public Button[] myPurchaseBtn;
+    [SerializeField] private Text statHP;
+    [SerializeField] private Text statSpeed;
+    [SerializeField] private Text statDamage;
+    private Player player;
+    private Gun gun;
+
 
     void OnEnable()
     {
@@ -23,6 +29,7 @@ public class ShopManager : MonoBehaviour
 
         LoadPanel();
         checkPurchaseable();
+        RefreshPlayerStatTexts();
     }
 
     void Update()
@@ -50,6 +57,7 @@ public class ShopManager : MonoBehaviour
 
             ApplyEffect(shopItemsSO[btnNo]);
             checkPurchaseable();
+            RefreshPlayerStatTexts();
         }
     }
 
@@ -90,6 +98,34 @@ public class ShopManager : MonoBehaviour
             case ShopItemType.UpgradeMaxHP:
                 gm.UpgradeMaxHP(item.effectValue);
                 break;
+        }
+    }
+
+    private void RefreshPlayerStatTexts()
+    {
+        if (player == null)
+        {
+            player = FindAnyObjectByType<Player>();
+        }
+
+        if (gun == null)
+        {
+            gun = FindAnyObjectByType<Gun>();
+        }
+
+        if (statHP != null)
+        {
+            statHP.text = player != null ? player.MaxHp.ToString("MaxHP : 0.##") : "N/A";
+        }
+
+        if (statSpeed != null)
+        {
+            statSpeed.text = player != null ? player.MoveSpeed.ToString("Speed : 0.##") : "N/A";
+        }
+
+        if (statDamage != null)
+        {
+            statDamage.text = gun != null ? gun.CurrentDamage.ToString("Damage : 0.##") : "N/A";
         }
     }
 
