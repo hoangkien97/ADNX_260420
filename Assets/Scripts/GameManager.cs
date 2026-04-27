@@ -45,13 +45,23 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureUnpausedAfterSceneLoad()
+    {
+        Time.timeScale = 1f;
+    }
+
     private void Awake()
     {
         instance = this;
+        Time.timeScale = 1f;
+        isPaused = false;
     }
 
     private void Start()
     {
+        Time.timeScale = 1f;
+        isPaused = false;
         countCoin = PlayerPrefs.GetInt("countCoin", DefaultCoinCount);
         UpdateCoinText();
         UpdateScoreText();
@@ -62,6 +72,15 @@ public class GameManager : MonoBehaviour
         if (shopPanel != null)
         {
             shopPanel.SetActive(false);
+        }
+    }
+
+    private void Update()
+    {
+        bool isShopOpen = shopPanel != null && shopPanel.activeInHierarchy;
+        if (!isPaused && !isShopOpen && Time.timeScale == 0f)
+        {
+            Time.timeScale = 1f;
         }
     }
 

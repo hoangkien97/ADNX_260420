@@ -181,6 +181,8 @@ MonoBehaviour:
   hpBar: {fileID: 4796836539763875921}
   enterDamege: 10
   stayDamege: 1
+  pathUpdateInterval: 0.3
+  waypointReachDistance: 0.15
   healObject: {fileID: 1054870582348991868, guid: 22ad11a728f09f643a5f2bc09acbd6c7, type: 3}
 --- !u!50 &2903823735480315631
 Rigidbody2D:

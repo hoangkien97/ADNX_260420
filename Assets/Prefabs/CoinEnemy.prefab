@@ -208,6 +208,8 @@ MonoBehaviour:
   hpBar: {fileID: 7421538949082028604}
   enterDamege: 15
   stayDamege: 1
+  pathUpdateInterval: 0.3
+  waypointReachDistance: 0.15
   coinObject: {fileID: 2620486766113095068, guid: a68aa6717683b224d842cd9bed4b4c2f, type: 3}
 --- !u!1001 &3255779205144813706
 PrefabInstance:

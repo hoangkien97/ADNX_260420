@@ -1234,6 +1234,110 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 430447074}
   m_CullTransparentMesh: 1
+--- !u!1 &444235757
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 444235759}
+  - component: {fileID: 444235758}
+  - component: {fileID: 444235760}
+  m_Layer: 0
+  m_Name: AStarManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &444235758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444235757}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78396926cbbfc4ac3b48fc5fc34a87d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AstarPathfindingProject::AstarPath
+  version: 1
+  data:
+    dataString: UEsDBBQAAAgIAAA4IewEeOZzZgIAAB0FAAALACQAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQF1VMFy2jAQ/RVG55KxiQnQW+sQ0kMSJqSTiy9CWmMNsuSR5ADJ8O9dyTZ26fSEePt2973Vyl9EKFsBc9qsjOBPmgP5PiL+TL6N+uAjHOlOq434hI7zLrgrPIkGzit1QiMe+zSrS3BGsB9qJz05QrBWItemXPIdpNo6i3BOpQUMGe18tkLoa0SO+DNe+JQTniYzf/rE0yIanfHIQDkwA2pys5glt/G0Tejo42mg14pJWlbAvfY+a97VnzdVFbpqGd4B01IK20oi7lQFyymtbI2GkMAFRYtBR3QzR6AAsSucFzxMf8lzC65VZejpXhicVVOX/NTNAEtq942yDypr3+kuCaKamk//hMdxCOdGl49d2zjyLVwh2P6Vnhi1bjDgIXzfK4/DfA5U7ulWwnsB6lmvjK4Vx6AztU+tLUzu+78XZ2kBbN/jjdQrsK76gUfX14MezsH8MZWi3IZBJg2wkToMPCwBGLyaXyg4rIhtZSPqVfy28EZ3w11qAw/CWIehlq68vK2ujaeSZZiZd1O7VBsFZlihAkWlO62xjru+wqvY/7MeqH82bfc21r2Gq5QA9/wougqt9eFyW7bQhyewxUvtpFDQj9oHnnFQqVaq2bChpS5tU5ucskHarhb8790ifHubTKNkMeMTFm8X2/HsDhidzqd3cQTJIp+TsHxCoU8q143Qdjx4baovrnDRuq/JaGVoFbadG3pYic9S254pVK43zACol6bCRTgYbILvki+5wAFtwDmhwoWTr4xIzfbAs0uhLDhdHp2hWV8lI5X40M4jGUnD5yMjHr4s89rAh4CDb94VO5PzH1BLAwQUAAAICAAAOCHsjEXsqW0AAAB4AAAACQAkAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAatWKkstKs7Mz1OyUjDRM9IzNNdRUEovSizIKAaKGII4pZkpIHa0UkqSsYmpgYmleYpRsmGSZZKuuVlqcqKphamZoUGqiWWahVIsUH1JZUGqX2JuKkRPQGJJRlpmXkpmXrqee1FmijvIaKXYWgBQSwECLQAUAAAICAAAOCHsBHjmc2YCAAAdBQAACwAkAAAAAAAAAAAAAAAAAAAAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQFQSwECLQAUAAAICAAAOCHsjEXsqW0AAAB4AAAACQAkAAAAAAAAAAAAAACzAgAAbWV0YS5qc29uCgAgAAAAAAABABgAAIA+1d6xnQEAgD7V3rGdAQCAPtXesZ0BUEsFBgAAAAACAAIAuAAAAGsDAAAAAA==
+    upgradeData: 
+    file_cachedStartup: {fileID: 0}
+    data_cachedStartup: 
+    cacheStartup: 0
+  showNavGraphs: 1
+  showUnwalkableNodes: 1
+  debugMode: 0
+  debugFloor: 0
+  debugRoof: 1
+  manualDebugFloorRoof: 0
+  showSearchTree: 0
+  unwalkableNodeDebugSize: 0.3
+  logPathResults: 1
+  maxNearestNodeDistance: 100
+  scanOnStartup: 0
+  fullGetNearestSearch: 0
+  prioritizeGraphs: 0
+  prioritizeGraphsLimit: 1
+  colorSettings:
+    _SolidColor: {r: 0.11764706, g: 0.4, b: 0.7882353, a: 0.9}
+    _UnwalkableNode: {r: 1, g: 0, b: 0, a: 0.5}
+    _BoundsHandles: {r: 0.29, g: 0.454, b: 0.741, a: 0.9}
+    _ConnectionLowLerp: {r: 0, g: 1, b: 0, a: 0.5}
+    _ConnectionHighLerp: {r: 1, g: 0, b: 0, a: 0.5}
+    _MeshEdgeColor: {r: 0, g: 0, b: 0, a: 0.5}
+    _AreaColors:
+    - {r: 0, g: 0, b: 0, a: 0}
+  tagNames: []
+  heuristic: 2
+  heuristicScale: 1
+  threadCount: 1
+  maxFrameTime: 10
+  batchGraphUpdates: 0
+  graphUpdateBatchingInterval: 0.2
+  euclideanEmbedding:
+    mode: 0
+    seed: 0
+    pivotPointRoot: {fileID: 0}
+    spreadOutCount: 1
+  showGraphs: 1
+--- !u!4 &444235759
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444235757}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.1318, y: 1.05233, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &444235760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444235757}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a634230476dc478b88eceac73b1c8a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AstarPathfindingProject::Pathfinding.ProceduralGridMover
+  version: 1
+  updateDistance: 2
+  target: {fileID: 1197691115}
+  graphIndex: 0
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1621,6 +1725,15 @@ MonoBehaviour:
   overrideWidth: 0
   overrideHeight: 0
   isTopDown3D: 0
+  autoSetupPathfinding: 1
+  graphWorldSize: 80
+  graphNodeSize: 0.5
+  graphFollowDistanceInNodes: 2
+  graphPaddingInNodes: 0
+  rockLayer: 6
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!4 &566895402
 Transform:
   m_ObjectHideFlags: 0
@@ -2919,7 +3032,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Run
   speed: 10
-  maxHp: 100
+  maxHp: 1000000
   hpBar: {fileID: 872570357}
   gameManager: {fileID: 945013245}
 --- !u!95 &1197691117
@@ -5027,3 +5140,4 @@ SceneRoots:
   - {fileID: 1988751230}
   - {fileID: 528713482}
   - {fileID: 818899902}
+  - {fileID: 444235759}
