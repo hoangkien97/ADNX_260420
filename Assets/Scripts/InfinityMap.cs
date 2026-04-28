@@ -39,6 +39,16 @@ public class InfinityMap : MonoBehaviour
     };
 
     // =======================================================
+    void Awake()
+    {
+        if (!autoSetupPathfinding)
+        {
+            return;
+        }
+
+        DisableProceduralGridMoversBeforeScan();
+    }
+
     void Start()
     {
         if (tilePrefabs == null || tilePrefabs.Length == 0)
@@ -214,6 +224,18 @@ public class InfinityMap : MonoBehaviour
         yield return null;
         Physics2D.SyncTransforms();
         SetupPathfinding();
+    }
+
+    void DisableProceduralGridMoversBeforeScan()
+    {
+        ProceduralGridMover[] movers = FindObjectsByType<ProceduralGridMover>(FindObjectsInactive.Include);
+        for (int i = 0; i < movers.Length; i++)
+        {
+            if (movers[i] != null)
+            {
+                movers[i].enabled = false;
+            }
+        }
     }
 
     void SetupPathfinding()
