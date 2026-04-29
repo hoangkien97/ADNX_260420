@@ -560,7 +560,7 @@ GameObject:
   - component: {fileID: 1514741458}
   - component: {fileID: 1514741457}
   m_Layer: 5
-  m_Name: Quit
+  m_Name: Logout
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -632,7 +632,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2102331803}
         m_TargetAssemblyTypeName: GameStartManager, Assembly-CSharp
-        m_MethodName: Quit
+        m_MethodName: Logout
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -662,7 +662,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 3553496697491056353, guid: 2f0ec3f4475737a41aa14786bb732f81, type: 3}
+  m_Sprite: {fileID: -78511123626688925, guid: 15a3c833f9c494647b744cd7e301e17b, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

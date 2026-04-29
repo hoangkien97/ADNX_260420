@@ -21,8 +21,9 @@ public class GameStartManager : MonoBehaviour
         SceneManager.LoadScene("SampleScene");
     }
 
-    public void Quit()
+    public void Logout()
     {
-        Application.Quit();
+        ApiManager.EnsureInstance().Logout();
+        SceneManager.LoadScene("Login");
     }
 }
