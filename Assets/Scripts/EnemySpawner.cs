@@ -115,6 +115,7 @@ public class EnemySpawner : MonoBehaviour
         currentStatMultiplier *= numberScale;
         deadEnemiesCount = 0;
         enemiesSpawnedThisWave = 0; 
+        GameManager.AdvanceWave();
 
         for (int i = 0; i < addedEnemies; i++)
         {

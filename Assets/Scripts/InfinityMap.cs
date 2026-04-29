@@ -186,20 +186,28 @@ public class InfinityMap : MonoBehaviour
     void SpawnTile(Vector2Int cell)
     {
         int idx = GetPrefabIndex(cell);
-        var tile = GetFromPool(idx);
-        tile.transform.position = CellToWorld(cell);
+        Vector3 worldPosition = CellToWorld(cell);
+        var tile = GetFromPool(idx, worldPosition);
+        tile.transform.position = worldPosition;
         tile.SetActive(true);
         NormalizeRockLayer(tile);
-        UpdatePathfindingForRockBounds(tile);
+        StartCoroutine(UpdatePathfindingForRockBoundsNextFrame(tile));
         activeTiles[cell] = tile;
 
         //Debug.Log($"[Spawn] cell={cell} → world={CellToWorld(cell)} prefab={idx}");
     }
 
-    GameObject GetFromPool(int idx)
+    GameObject GetFromPool(int idx, Vector3 worldPosition)
     {
         EnsurePool(idx);
-        return pools[idx].Count > 0 ? pools[idx].Dequeue() : Instantiate(tilePrefabs[idx]);
+        if (pools[idx].Count > 0)
+        {
+            return pools[idx].Dequeue();
+        }
+
+        GameObject prefab = tilePrefabs[idx];
+        Quaternion spawnRotation = prefab != null ? prefab.transform.rotation : Quaternion.identity;
+        return Instantiate(prefab, worldPosition, spawnRotation);
     }
 
     void ReturnToPool(Vector2Int cell, GameObject tile)
@@ -220,10 +228,23 @@ public class InfinityMap : MonoBehaviour
 
     IEnumerator SetupPathfindingAfterMapReady()
     {
-        // Chờ 1 frame để TilemapCollider2D/CompositeCollider2D cập nhật shape sau khi clone map.
+        // Chờ 1 frame và 1 nhịp physics để TilemapCollider2D/CompositeCollider2D cập nhật shape sau khi clone map.
         yield return null;
+        yield return new WaitForFixedUpdate();
         Physics2D.SyncTransforms();
         SetupPathfinding();
+    }
+
+    IEnumerator UpdatePathfindingForRockBoundsNextFrame(GameObject tile)
+    {
+        yield return null;
+        if (tile == null || !tile.activeInHierarchy)
+        {
+            yield break;
+        }
+
+        Physics2D.SyncTransforms();
+        UpdatePathfindingForRockBounds(tile);
     }
 
     void DisableProceduralGridMoversBeforeScan()
@@ -411,6 +432,12 @@ public class InfinityMap : MonoBehaviour
                 if (compositeCollider != null && compositeCollider.geometryType != CompositeCollider2D.GeometryType.Polygons)
                 {
                     compositeCollider.geometryType = CompositeCollider2D.GeometryType.Polygons;
+                }
+
+                DynamicGridObstacle dynamicObstacle = current.GetComponent<DynamicGridObstacle>();
+                if (dynamicObstacle != null && dynamicObstacle.enabled)
+                {
+                    dynamicObstacle.enabled = false;
                 }
             }
         }

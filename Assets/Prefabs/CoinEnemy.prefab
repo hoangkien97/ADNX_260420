@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 7883361437629682360}
   - component: {fileID: 6130685940402836482}
   - component: {fileID: 6672719370713362451}
+  - component: {fileID: 827416487522411858}
   m_Layer: 0
   m_Name: CoinEnemy
   m_TagString: Enemy
@@ -204,13 +205,41 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CoinEnemy
   enemyMoveSpeed: 1
+  pathUpdateInterval: 0.3
+  waypointReachDistance: 0.15
   maxHp: 100
   hpBar: {fileID: 7421538949082028604}
   enterDamege: 15
   stayDamege: 1
-  pathUpdateInterval: 0.3
-  waypointReachDistance: 0.15
   coinObject: {fileID: 2620486766113095068, guid: a68aa6717683b224d842cd9bed4b4c2f, type: 3}
+--- !u!114 &827416487522411858
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363658447288777243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 373b52eb9bf8c40f785bb6947a1aee66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AstarPathfindingProject::Pathfinding.Seeker
+  version: 1
+  drawGizmos: 1
+  detailedGizmos: 0
+  startEndModifier:
+    addPoints: 0
+    exactStartPoint: 3
+    exactEndPoint: 3
+    useRaycasting: 0
+    mask:
+      serializedVersion: 2
+      m_Bits: 4294967295
+    useGraphRaycasting: 0
+  traversableTags: -1
+  tagPenalties: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  graphMask:
+    value: -1
 --- !u!1001 &3255779205144813706
 PrefabInstance:
   m_ObjectHideFlags: 0
