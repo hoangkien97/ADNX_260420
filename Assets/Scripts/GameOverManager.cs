@@ -7,14 +7,20 @@ public class GameOverManager : MonoBehaviour
 
     private void Start()
     {
-        bool isNewRecord;
-        RankingManager.SaveScore(GameManager.Score, out isNewRecord);
-
         if (rankingManager == null)
             rankingManager = FindAnyObjectByType<RankingManager>();
 
         if (rankingManager != null)
-            rankingManager.RefreshUI(isNewRecord); 
+            rankingManager.RefreshUI();
+
+        ApiManager api = ApiManager.EnsureInstance();
+        api.PostScore(GameManager.Score, GameManager.Wave, success =>
+        {
+            if (rankingManager != null)
+            {
+                rankingManager.RefreshUI();
+            }
+        });
     }
     public void GoMainMenu()
     {

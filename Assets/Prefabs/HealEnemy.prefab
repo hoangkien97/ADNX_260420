@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2924303331458651797}
   - component: {fileID: 720923068920983844}
   - component: {fileID: 2903823735480315631}
+  - component: {fileID: 5462558125486168110}
   m_Layer: 0
   m_Name: HealEnemy
   m_TagString: Enemy
@@ -177,6 +178,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HealEnemy
   enemyMoveSpeed: 1
+  pathUpdateInterval: 0.3
+  waypointReachDistance: 0.15
   maxHp: 150
   hpBar: {fileID: 4796836539763875921}
   enterDamege: 10
@@ -209,6 +212,34 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
+--- !u!114 &5462558125486168110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8578261700073108234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 373b52eb9bf8c40f785bb6947a1aee66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AstarPathfindingProject::Pathfinding.Seeker
+  version: 1
+  drawGizmos: 1
+  detailedGizmos: 0
+  startEndModifier:
+    addPoints: 0
+    exactStartPoint: 3
+    exactEndPoint: 3
+    useRaycasting: 0
+    mask:
+      serializedVersion: 2
+      m_Bits: 4294967295
+    useGraphRaycasting: 0
+  traversableTags: -1
+  tagPenalties: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  graphMask:
+    value: -1
 --- !u!1001 &666966908217416423
 PrefabInstance:
   m_ObjectHideFlags: 0

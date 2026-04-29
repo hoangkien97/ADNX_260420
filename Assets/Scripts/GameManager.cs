@@ -9,11 +9,13 @@ public class GameManager : MonoBehaviour
     public const float DefaultBonusMaxHP = 0f;
     public const int DefaultCoinCount = 0;
     public const int DefaultScore = 0;
+    public const int DefaultWave = 1;
 
     [SerializeField] private Text txtCoin;
     [SerializeField] private Text txtScore;
     private static int countCoin = 0;
     private static int score = 0;
+    private static int wave = DefaultWave;
     [SerializeField] private GameObject pausePanel;
     private bool isPaused = false;
     [SerializeField] private GameObject shopPanel;
@@ -45,13 +47,23 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureUnpausedAfterSceneLoad()
+    {
+        Time.timeScale = 1f;
+    }
+
     private void Awake()
     {
         instance = this;
+        Time.timeScale = 1f;
+        isPaused = false;
     }
 
     private void Start()
     {
+        Time.timeScale = 1f;
+        isPaused = false;
         countCoin = PlayerPrefs.GetInt("countCoin", DefaultCoinCount);
         UpdateCoinText();
         UpdateScoreText();
@@ -62,6 +74,21 @@ public class GameManager : MonoBehaviour
         if (shopPanel != null)
         {
             shopPanel.SetActive(false);
+        }
+    }
+
+    public static int Wave
+    {
+        get => wave;
+        private set => wave = Mathf.Max(DefaultWave, value);
+    }
+
+    private void Update()
+    {
+        bool isShopOpen = shopPanel != null && shopPanel.activeInHierarchy;
+        if (!isPaused && !isShopOpen && Time.timeScale == 0f)
+        {
+            Time.timeScale = 1f;
         }
     }
 
@@ -101,6 +128,12 @@ public class GameManager : MonoBehaviour
         BonusMaxHP = DefaultBonusMaxHP;
         CountCoin = DefaultCoinCount;
         Score = DefaultScore;
+        Wave = DefaultWave;
+    }
+
+    public static void AdvanceWave()
+    {
+        Wave++;
     }
 
 

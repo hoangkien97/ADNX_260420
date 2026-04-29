@@ -17,6 +17,7 @@ public class EnemySpawner : MonoBehaviour
 
     void Start()
     {
+        Time.timeScale = 1f;
         enemyPool = new List<GameObject>();
         for (int i = 0; i < poolSize; i++)
         {
@@ -43,6 +44,7 @@ public class EnemySpawner : MonoBehaviour
             float height = cam.orthographicSize;
             float width = height * cam.aspect;
             Vector3 camPos = cam.transform.position;
+            camPos.z = 0f;
 
             Vector3[] spawnPoints = new Vector3[]
             {
@@ -113,6 +115,7 @@ public class EnemySpawner : MonoBehaviour
         currentStatMultiplier *= numberScale;
         deadEnemiesCount = 0;
         enemiesSpawnedThisWave = 0; 
+        GameManager.AdvanceWave();
 
         for (int i = 0; i < addedEnemies; i++)
         {

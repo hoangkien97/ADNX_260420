@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Collections.Generic;
+using Pathfinding;
 using UnityEngine;
 
 public class InfinityMap : MonoBehaviour
@@ -14,6 +16,15 @@ public class InfinityMap : MonoBehaviour
     [Header("Mode")]
     public bool isTopDown3D = false;
 
+    [Header("A* Pathfinding")]
+    [SerializeField] private bool autoSetupPathfinding = true;
+    [SerializeField] private float graphWorldSize = 80f;
+    [SerializeField] private float graphNodeSize = 0.5f;
+    [SerializeField] private float graphFollowDistanceInNodes = 2f;
+    [SerializeField] private int graphPaddingInNodes = 0;
+    [SerializeField] private int rockLayer = 6;
+    [SerializeField] private LayerMask obstacleLayers = 1 << 6;
+
     // Kích thước thực đo được từ prefab
     private float tileW;
     private float tileH;
@@ -28,10 +39,22 @@ public class InfinityMap : MonoBehaviour
     };
 
     // =======================================================
+    void Awake()
+    {
+        if (!autoSetupPathfinding)
+        {
+            return;
+        }
+
+        DisableProceduralGridMoversBeforeScan();
+    }
+
     void Start()
     {
         if (tilePrefabs == null || tilePrefabs.Length == 0)
         { Debug.LogError("[InfiniteMap] Thiếu tilePrefabs!"); return; }
+        if (player == null)
+        { Debug.LogError("[InfiniteMap] Thiếu player reference!"); return; }
 
         MeasureTileSize();   // ← đo kích thước thực trước tiên
 
@@ -40,6 +63,11 @@ public class InfinityMap : MonoBehaviour
 
         lastAnchor = WorldToAnchor(player.position);
         Refresh();
+
+        if (autoSetupPathfinding)
+        {
+            StartCoroutine(SetupPathfindingAfterMapReady());
+        }
     }
 
     void Update()
@@ -158,29 +186,392 @@ public class InfinityMap : MonoBehaviour
     void SpawnTile(Vector2Int cell)
     {
         int idx = GetPrefabIndex(cell);
-        var tile = GetFromPool(idx);
-        tile.transform.position = CellToWorld(cell);
+        Vector3 worldPosition = CellToWorld(cell);
+        var tile = GetFromPool(idx, worldPosition);
+        tile.transform.position = worldPosition;
         tile.SetActive(true);
+        NormalizeRockLayer(tile);
+        StartCoroutine(UpdatePathfindingForRockBoundsNextFrame(tile));
         activeTiles[cell] = tile;
 
         //Debug.Log($"[Spawn] cell={cell} → world={CellToWorld(cell)} prefab={idx}");
     }
 
-    GameObject GetFromPool(int idx)
+    GameObject GetFromPool(int idx, Vector3 worldPosition)
     {
         EnsurePool(idx);
-        return pools[idx].Count > 0 ? pools[idx].Dequeue() : Instantiate(tilePrefabs[idx]);
+        if (pools[idx].Count > 0)
+        {
+            return pools[idx].Dequeue();
+        }
+
+        GameObject prefab = tilePrefabs[idx];
+        Quaternion spawnRotation = prefab != null ? prefab.transform.rotation : Quaternion.identity;
+        return Instantiate(prefab, worldPosition, spawnRotation);
     }
 
     void ReturnToPool(Vector2Int cell, GameObject tile)
     {
         int idx = GetPrefabIndex(cell);
         EnsurePool(idx);
+        bool hasBounds = TryGetRockBounds(tile, out Bounds rockBounds);
         tile.SetActive(false);
+        if (hasBounds && autoSetupPathfinding && AstarPath.active != null)
+        {
+            Physics2D.SyncTransforms();
+            AstarPath.active.UpdateGraphs(rockBounds);
+        }
         pools[idx].Enqueue(tile);
     }
 
     void EnsurePool(int idx) { if (!pools.ContainsKey(idx)) pools[idx] = new(); }
+
+    IEnumerator SetupPathfindingAfterMapReady()
+    {
+        // Chờ 1 frame và 1 nhịp physics để TilemapCollider2D/CompositeCollider2D cập nhật shape sau khi clone map.
+        yield return null;
+        yield return new WaitForFixedUpdate();
+        Physics2D.SyncTransforms();
+        SetupPathfinding();
+    }
+
+    IEnumerator UpdatePathfindingForRockBoundsNextFrame(GameObject tile)
+    {
+        yield return null;
+        if (tile == null || !tile.activeInHierarchy)
+        {
+            yield break;
+        }
+
+        Physics2D.SyncTransforms();
+        UpdatePathfindingForRockBounds(tile);
+    }
+
+    void DisableProceduralGridMoversBeforeScan()
+    {
+        ProceduralGridMover[] movers = FindObjectsByType<ProceduralGridMover>(FindObjectsInactive.Include);
+        for (int i = 0; i < movers.Length; i++)
+        {
+            if (movers[i] != null)
+            {
+                movers[i].enabled = false;
+            }
+        }
+    }
+
+    void SetupPathfinding()
+    {
+        AstarPath astar = AstarPath.active;
+        if (astar == null)
+        {
+            GameObject astarObject = new GameObject("A* Pathfinding");
+            astar = astarObject.AddComponent<AstarPath>();
+        }
+
+        if (astar == null)
+        {
+            Debug.LogWarning("[InfiniteMap] Không thể khởi tạo AstarPath.");
+            return;
+        }
+
+        GridGraph graph = astar.data.gridGraph;
+        if (graph == null)
+        {
+            graph = astar.data.AddGraph(typeof(GridGraph)) as GridGraph;
+        }
+
+        if (graph == null)
+        {
+            Debug.LogWarning("[InfiniteMap] Không thể tạo GridGraph.");
+            return;
+        }
+
+        float nodeSize = Mathf.Max(0.1f, graphNodeSize);
+        int widthNodes;
+        int depthNodes;
+        Vector3 graphCenter;
+
+        if (TryGetActiveMapBounds(out Bounds mapBounds))
+        {
+            float padding = Mathf.Max(0, graphPaddingInNodes) * nodeSize;
+            mapBounds.Expand(new Vector3(padding * 2f, padding * 2f, 0f));
+            widthNodes = Mathf.Max(1, Mathf.CeilToInt(mapBounds.size.x / nodeSize));
+            depthNodes = Mathf.Max(1, Mathf.CeilToInt(mapBounds.size.y / nodeSize));
+            graphCenter = mapBounds.center;
+        }
+        else
+        {
+            int graphSizeInNodes = Mathf.Max(20, Mathf.RoundToInt(graphWorldSize / nodeSize));
+            widthNodes = graphSizeInNodes;
+            depthNodes = graphSizeInNodes;
+            graphCenter = player.position;
+        }
+
+        graphCenter.z = 0f;
+
+        graph.SetDimensions(widthNodes, depthNodes, nodeSize);
+        graph.center = graphCenter;
+        graph.is2D = true;
+        graph.neighbours = NumNeighbours.Eight;
+        graph.cutCorners = false;
+        graph.erodeIterations = 0;
+        graph.collision.use2D = true;
+        graph.collision.heightCheck = false;
+        graph.collision.collisionCheck = true;
+        graph.collision.type = ColliderType.Sphere;
+        graph.collision.diameter = 1f;
+        graph.collision.mask = ResolveObstacleLayerMask();
+
+        Debug.Log($"[InfiniteMap] A* graph configured: size={graph.width}x{graph.depth}, nodeSize={graph.nodeSize}, center={graph.center}, mask={graph.collision.mask.value}");
+
+        Physics2D.SyncTransforms();
+        astar.Scan();
+
+        ProceduralGridMover mover = astar.GetComponent<ProceduralGridMover>();
+        if (mover == null)
+        {
+            mover = astar.gameObject.AddComponent<ProceduralGridMover>();
+        }
+
+        mover.graph = graph;
+        mover.target = player;
+        mover.updateDistance = Mathf.Max(1f, graphFollowDistanceInNodes);
+        mover.enabled = mover.target != null;
+        if (mover.enabled)
+        {
+            mover.UpdateGraph();
+        }
+    }
+
+    LayerMask ResolveObstacleLayerMask()
+    {
+        if (obstacleLayers.value != 0)
+        {
+            return obstacleLayers;
+        }
+
+        int detectedRockLayer = FindRockLayerFromActiveTiles();
+        if (detectedRockLayer < 0)
+        {
+            detectedRockLayer = FindRockLayerFromPrefabs();
+        }
+        int finalLayer = detectedRockLayer >= 0 ? detectedRockLayer : rockLayer;
+        int clampedRockLayer = Mathf.Clamp(finalLayer, 0, 31);
+        return 1 << clampedRockLayer;
+    }
+
+    int FindRockLayerFromActiveTiles()
+    {
+        foreach (var kv in activeTiles)
+        {
+            GameObject tile = kv.Value;
+            if (tile == null)
+            {
+                continue;
+            }
+
+            Transform[] transforms = tile.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform current = transforms[i];
+                if (current.CompareTag("Rock"))
+                {
+                    return current.gameObject.layer;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    int FindRockLayerFromPrefabs()
+    {
+        if (tilePrefabs == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < tilePrefabs.Length; i++)
+        {
+            GameObject tilePrefab = tilePrefabs[i];
+            if (tilePrefab == null)
+            {
+                continue;
+            }
+
+            Transform[] transforms = tilePrefab.GetComponentsInChildren<Transform>(true);
+            for (int j = 0; j < transforms.Length; j++)
+            {
+                Transform current = transforms[j];
+                if (current.CompareTag("Rock"))
+                {
+                    return current.gameObject.layer;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    void NormalizeRockLayer(GameObject tile)
+    {
+        if (tile == null)
+        {
+            return;
+        }
+
+        int clampedRockLayer = Mathf.Clamp(rockLayer, 0, 31);
+        Transform[] transforms = tile.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            Transform current = transforms[i];
+            if (current.CompareTag("Rock"))
+            {
+                current.gameObject.layer = clampedRockLayer;
+                CompositeCollider2D compositeCollider = current.GetComponent<CompositeCollider2D>();
+                if (compositeCollider != null && compositeCollider.geometryType != CompositeCollider2D.GeometryType.Polygons)
+                {
+                    compositeCollider.geometryType = CompositeCollider2D.GeometryType.Polygons;
+                }
+
+                DynamicGridObstacle dynamicObstacle = current.GetComponent<DynamicGridObstacle>();
+                if (dynamicObstacle != null && dynamicObstacle.enabled)
+                {
+                    dynamicObstacle.enabled = false;
+                }
+            }
+        }
+    }
+
+    void UpdatePathfindingForRockBounds(GameObject tile)
+    {
+        if (!autoSetupPathfinding || AstarPath.active == null || tile == null)
+        {
+            return;
+        }
+
+        if (TryGetRockBounds(tile, out Bounds bounds))
+        {
+            Physics2D.SyncTransforms();
+            AstarPath.active.UpdateGraphs(bounds);
+        }
+    }
+
+    bool TryGetRockBounds(GameObject tile, out Bounds bounds)
+    {
+        bounds = default;
+        Collider2D[] colliders = tile.GetComponentsInChildren<Collider2D>(true);
+        bool hasBounds = false;
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider2D collider = colliders[i];
+            if (!collider.enabled || !collider.CompareTag("Rock"))
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = collider.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(collider.bounds);
+            }
+        }
+
+        return hasBounds;
+    }
+
+    bool TryGetActiveMapBounds(out Bounds bounds)
+    {
+        bounds = default;
+        bool hasBounds = false;
+
+        if (tileW > 0f && tileH > 0f)
+        {
+            float minX = 0f;
+            float minY = 0f;
+            float maxX = 0f;
+            float maxY = 0f;
+
+            foreach (var kv in activeTiles)
+            {
+                GameObject tile = kv.Value;
+                if (tile == null || !tile.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                Vector2Int cell = kv.Key;
+                float tileMinX = cell.x * tileW;
+                float tileMaxX = tileMinX + tileW;
+                float tileMinY = cell.y * tileH;
+                float tileMaxY = tileMinY + tileH;
+
+                if (!hasBounds)
+                {
+                    minX = tileMinX;
+                    minY = tileMinY;
+                    maxX = tileMaxX;
+                    maxY = tileMaxY;
+                    hasBounds = true;
+                }
+                else
+                {
+                    minX = Mathf.Min(minX, tileMinX);
+                    minY = Mathf.Min(minY, tileMinY);
+                    maxX = Mathf.Max(maxX, tileMaxX);
+                    maxY = Mathf.Max(maxY, tileMaxY);
+                }
+            }
+
+            if (hasBounds)
+            {
+                Vector3 center = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
+                Vector3 size = new Vector3(maxX - minX, maxY - minY, 0f);
+                bounds = new Bounds(center, size);
+                return true;
+            }
+        }
+
+        return TryGetActiveMapContentBounds(out bounds);
+    }
+
+    bool TryGetActiveMapContentBounds(out Bounds bounds)
+    {
+        bounds = default;
+        bool hasBounds = false;
+
+        foreach (var kv in activeTiles)
+        {
+            GameObject tile = kv.Value;
+            if (tile == null || !tile.activeInHierarchy)
+            {
+                continue;
+            }
+
+            Bounds tileBounds = GetBounds(tile);
+            if (tileBounds.size == Vector3.zero)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = tileBounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(tileBounds);
+            }
+        }
+
+        return hasBounds;
+    }
 
     // =======================================================
     // COORDINATES

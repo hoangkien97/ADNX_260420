@@ -3,18 +3,26 @@ using UnityEngine.SceneManagement;
 
 public class GameStartManager : MonoBehaviour
 {
+    private void Start()
+    {
+        ApiManager.EnsureInstance();
+    }
+
     public void GameStart()
     {
-        ResetRunState();
+        ApiManager.EnsureInstance();
+        if (!ApiManager.IsLoggedIn)
+        {
+            SceneManager.LoadScene("Login");
+            return;
+        }
+
+        GameManager.ResetRunState();
         SceneManager.LoadScene("SampleScene");
     }
+
     public void Quit()
     {
         Application.Quit();
-    }
-
-    private void ResetRunState()
-    {
-        GameManager.ResetRunState();
     }
 }
