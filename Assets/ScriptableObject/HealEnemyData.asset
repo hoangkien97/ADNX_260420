@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03352dd54b9236e48b221ef62e1f1e85, type: 3}
+  m_Name: HealEnemyData
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDataSO
+  enemyName: Enemy
+  maxHp: 150
+  moveSpeed: 2
+  enterDamage: 10
+  stayDamage: 1
+  dropPrefab: {fileID: 1054870582348991868, guid: 22ad11a728f09f643a5f2bc09acbd6c7, type: 3}
+  dropLifetime: 7

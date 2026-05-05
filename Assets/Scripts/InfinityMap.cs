@@ -32,6 +32,7 @@ public class InfinityMap : MonoBehaviour
     private Dictionary<Vector2Int, GameObject> activeTiles = new();
     private Dictionary<int, Queue<GameObject>> pools = new();
     private Vector2Int lastAnchor = new(int.MaxValue, int.MaxValue);
+    private bool graphScanned = false;   // true sau khi A* Scan() hoàn thành
 
     private static readonly Vector2Int[] OFFSETS =
     {
@@ -216,7 +217,7 @@ public class InfinityMap : MonoBehaviour
         EnsurePool(idx);
         bool hasBounds = TryGetRockBounds(tile, out Bounds rockBounds);
         tile.SetActive(false);
-        if (hasBounds && autoSetupPathfinding && AstarPath.active != null)
+        if (hasBounds && autoSetupPathfinding && graphScanned && AstarPath.active != null)
         {
             Physics2D.SyncTransforms();
             AstarPath.active.UpdateGraphs(rockBounds);
@@ -326,6 +327,7 @@ public class InfinityMap : MonoBehaviour
 
         Physics2D.SyncTransforms();
         astar.Scan();
+        graphScanned = true;   // ← đánh dấu graph đã sẵn sàng
 
         ProceduralGridMover mover = astar.GetComponent<ProceduralGridMover>();
         if (mover == null)
@@ -445,7 +447,7 @@ public class InfinityMap : MonoBehaviour
 
     void UpdatePathfindingForRockBounds(GameObject tile)
     {
-        if (!autoSetupPathfinding || AstarPath.active == null || tile == null)
+        if (!autoSetupPathfinding || !graphScanned || AstarPath.active == null || tile == null)
         {
             return;
         }

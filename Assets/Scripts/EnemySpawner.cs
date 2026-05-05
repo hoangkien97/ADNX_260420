@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -30,9 +30,14 @@ public class EnemySpawner : MonoBehaviour
 
     private IEnumerator SpawnEnemyCoroutine()
     {
+        // Chờ A* graph được scan xong trước khi bắt đầu spawn
+        yield return new WaitUntil(() => AstarPath.active != null && AstarPath.active.isScanning == false && AstarPath.active.graphs != null);
+        yield return new WaitForSeconds(1f); // thêm buffer nhỏ cho chắc
+
         while (true)
         {
             yield return new WaitForSeconds(timeBetweenSpawns);
+
             if (shopPanel != null && shopPanel.activeInHierarchy)
             {
                 continue; 

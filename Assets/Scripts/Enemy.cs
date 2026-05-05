@@ -1,20 +1,34 @@
-using UnityEngine;
+    using UnityEngine;
 using UnityEngine.UI;
 using Pathfinding;
 
-public abstract class Enemy : MonoBehaviour
+public class Enemy : MonoBehaviour
 {
-    [SerializeField] private float enemyMoveSpeed = 2f;
-    [SerializeField] private float pathUpdateInterval = 0.3f;
-    [SerializeField] private float waypointReachDistance = 0.15f;
+    [SerializeField] private EnemyDataSO enemyData;
+
+    private float enemyMoveSpeed;
+    private float pathUpdateInterval = 0.3f;
+    private float waypointReachDistance = 0.15f;
 
     protected Player player;
-    [SerializeField] protected float maxHp = 100f;
+     protected float maxHp ;
     protected float currentHp;
     [SerializeField] private Image hpBar;
-    [SerializeField] protected float enterDamege = 10f;
-    [SerializeField] protected float stayDamege = 1f;
+    protected float enterDamege;
+    protected float stayDamege;
     protected EnemySpawner spawner;
+
+    private void ApplyDataSO()
+    {
+        if (enemyData == null) return;
+        enemyMoveSpeed = enemyData.moveSpeed;
+        maxHp          = enemyData.maxHp;
+        enterDamege    = enemyData.enterDamage;
+        stayDamege     = enemyData.stayDamage;
+    }
+
+    protected GameObject GetDropPrefab()   => enemyData != null ? enemyData.dropPrefab  : null;
+    protected float      GetDropLifetime() => enemyData != null ? enemyData.dropLifetime : 7f;
 
     private SpriteRenderer spriteRenderer;
     private Seeker seeker;
@@ -31,6 +45,7 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void Awake()
     {
+        ApplyDataSO();
         spriteRenderer = GetComponent<SpriteRenderer>();
         seeker = GetComponent<Seeker>();
         if (seeker == null)
@@ -41,6 +56,8 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void OnEnable()
     {
+        ApplyDataSO();          
+        statsInitialized = false; 
         player = FindAnyObjectByType<Player>();
         movementPlaneZ = player != null ? player.transform.position.z : 0f;
         transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
@@ -230,6 +247,12 @@ public abstract class Enemy : MonoBehaviour
     protected virtual void Die()
     {
         GameManager.AddScore();
+        GameObject prefab = GetDropPrefab();
+        if (prefab != null)
+        {
+            GameObject dropItem = Instantiate(prefab, transform.position, Quaternion.identity);
+            Destroy(dropItem, GetDropLifetime());
+        }
 
         if (spawner != null)
         {
@@ -247,6 +270,24 @@ public abstract class Enemy : MonoBehaviour
         if (hpBar != null)
         {
             hpBar.fillAmount = currentHp / maxHp;
+        }
+    }
+
+    protected virtual void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            if (player != null)
+                player.TakeDamage(enterDamege);
+        }
+    }
+
+    protected virtual void OnTriggerStay2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            if (player != null)
+                player.TakeDamage(stayDamege);
         }
     }
 }

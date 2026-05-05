@@ -39,7 +39,23 @@ public class ApiManager : MonoBehaviour
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        ClearStoredSession();
+        LoadStoredSession();
+    }
+
+    private void LoadStoredSession()
+    {
+        int savedPlayerId = PlayerPrefs.GetInt(PLAYER_ID_KEY, 0);
+        string savedUsername = PlayerPrefs.GetString(USERNAME_KEY, "");
+
+        if (savedPlayerId > 0 && !string.IsNullOrWhiteSpace(savedUsername))
+        {
+            CurrentPlayerId = savedPlayerId;
+            CurrentUsername = savedUsername;
+        }
+        else
+        {
+            ClearStoredSession();
+        }
     }
 
     public void Login(string username, string password,
@@ -51,7 +67,7 @@ public class ApiManager : MonoBehaviour
             JsonUtility.ToJson(new LoginRequest { username = username, password = password }),
             (ok, json) =>
             {
-                LoginResponse res = ParseLoginResponse(json, ok ? "Đăng nhập thành công" : "Lỗi đăng nhập");
+                LoginResponse res = ParseLoginResponse(json, ok ? "Log in successfully" : "Login error");
                 if (ok && res.success)
                 {
                     SetSession(res.playerId, username);
@@ -69,7 +85,7 @@ public class ApiManager : MonoBehaviour
             JsonUtility.ToJson(new LoginRequest { username = username, password = password }),
             (ok, json) =>
             {
-                LoginResponse res = ParseLoginResponse(json, ok ? "Đăng ký thành công" : "Lỗi đăng ký");
+                LoginResponse res = ParseLoginResponse(json, ok ? "Registered successfully" : "Registration error");
                 callback?.Invoke(ok && res.success, res.message);
             }));
     }
@@ -173,6 +189,10 @@ public class ApiManager : MonoBehaviour
     {
         CurrentPlayerId = playerId;
         CurrentUsername = username;
+
+        PlayerPrefs.SetInt(PLAYER_ID_KEY, playerId);
+        PlayerPrefs.SetString(USERNAME_KEY, username);
+        PlayerPrefs.Save();
     }
 
     private static void ClearStoredSession()

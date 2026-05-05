@@ -80,6 +80,7 @@ public class RankingManager : MonoBehaviour
             return;
         }
 
+        bool hasHighlightedCurrentRun = false;
         int maxRows = Mathf.Min(5, rankingTexts.Length);
         for (int i = 0; i < maxRows; i++)
         {
@@ -91,7 +92,15 @@ public class RankingManager : MonoBehaviour
             if (i < entries.Length)
             {
                 LeaderboardEntry entry = entries[i];
-                SetRankingColor(i, IsCurrentRunEntry(entry) ? CurrentRunColor : GetDefaultColor(i));
+                bool isCurrentRun = false;
+                
+                if (!hasHighlightedCurrentRun && IsCurrentRunEntry(entry))
+                {
+                    isCurrentRun = true;
+                    hasHighlightedCurrentRun = true;
+                }
+
+                SetRankingColor(i, isCurrentRun ? CurrentRunColor : GetDefaultColor(i));
                 rankingTexts[i].text = string.Format("#{0}   {1}   {2}   W{3}",
                     i + 1,
                     entry.GetUsername(),
@@ -130,7 +139,7 @@ public class RankingManager : MonoBehaviour
             }
 
             SetRankingColor(i, GetDefaultColor(i));
-            rankingTexts[i].text = i == 0 ? "Khong tai duoc leaderboard tu Database" : "";
+            rankingTexts[i].text = i == 0 ? "Can't load leaderboard from Database" : "";
         }
     }
 
@@ -147,9 +156,13 @@ public class RankingManager : MonoBehaviour
             return false;
         }
 
+        if (!ApiManager.IsLoggedIn)
+        {
+            return false;
+        }
+
         string currentUsername = ApiManager.CurrentUsername;
-        return string.IsNullOrWhiteSpace(currentUsername)
-            || string.Equals(entry.GetUsername(), currentUsername, System.StringComparison.OrdinalIgnoreCase);
+        return string.Equals(entry.GetUsername(), currentUsername, System.StringComparison.OrdinalIgnoreCase);
     }
 
     private void CaptureDefaultColors()
