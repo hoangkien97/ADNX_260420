@@ -13,8 +13,8 @@ GameObject:
   - component: {fileID: 1188123417254332406}
   - component: {fileID: 7883361437629682360}
   - component: {fileID: 6130685940402836482}
-  - component: {fileID: 6672719370713362451}
   - component: {fileID: 827416487522411858}
+  - component: {fileID: 2406535326439749654}
   m_Layer: 0
   m_Name: CoinEnemy
   m_TagString: Enemy
@@ -192,26 +192,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &6672719370713362451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8363658447288777243}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 156bcc2917f165f4191eeed09d93c33b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CoinEnemy
-  enemyData: {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
-  enemyMoveSpeed: 1.5
-  pathUpdateInterval: 0.3
-  waypointReachDistance: 0.15
-  maxHp: 100
-  hpBar: {fileID: 7421538949082028604}
-  enterDamege: 15
-  stayDamege: 1
 --- !u!114 &827416487522411858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -240,6 +220,20 @@ MonoBehaviour:
   tagPenalties: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   graphMask:
     value: -1
+--- !u!114 &2406535326439749654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363658447288777243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aae4037d0546ec948948aea51236161d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Enemy
+  enemyData: {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
+  hpBar: {fileID: 7421538949082028604}
 --- !u!1001 &3255779205144813706
 PrefabInstance:
   m_ObjectHideFlags: 0

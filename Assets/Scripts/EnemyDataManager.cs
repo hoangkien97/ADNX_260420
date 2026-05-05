@@ -110,6 +110,11 @@ public class EnemyDataManager : MonoBehaviour
                 if (prefab != null) target.dropPrefab = prefab;
                 else Debug.LogWarning($"[EnemyDataManager] Drop prefab not found: EnemyDrops/{r.dropPrefabName}");
             }
+            else
+            {
+                target.dropPrefab = null; 
+            }
+
         }
     }
 

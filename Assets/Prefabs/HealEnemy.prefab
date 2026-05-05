@@ -12,9 +12,9 @@ GameObject:
   - component: {fileID: 1004102930390549151}
   - component: {fileID: 431501731455533776}
   - component: {fileID: 2924303331458651797}
-  - component: {fileID: 720923068920983844}
   - component: {fileID: 2903823735480315631}
   - component: {fileID: 5462558125486168110}
+  - component: {fileID: 1168148415506019134}
   m_Layer: 0
   m_Name: HealEnemy
   m_TagString: Enemy
@@ -165,26 +165,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &720923068920983844
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8578261700073108234}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1f7c919dba16e9408f605a709bff2a4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HealEnemy
-  enemyData: {fileID: 11400000, guid: c6a2fc13332a2a443b17511dc2bfa365, type: 2}
-  enemyMoveSpeed: 1.8
-  pathUpdateInterval: 0.3
-  waypointReachDistance: 0.15
-  maxHp: 150
-  hpBar: {fileID: 4796836539763875921}
-  enterDamege: 10
-  stayDamege: 1
 --- !u!50 &2903823735480315631
 Rigidbody2D:
   serializedVersion: 5
@@ -240,6 +220,20 @@ MonoBehaviour:
   tagPenalties: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   graphMask:
     value: -1
+--- !u!114 &1168148415506019134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8578261700073108234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aae4037d0546ec948948aea51236161d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Enemy
+  enemyData: {fileID: 11400000, guid: c6a2fc13332a2a443b17511dc2bfa365, type: 2}
+  hpBar: {fileID: 4796836539763875921}
 --- !u!1001 &666966908217416423
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -2,20 +2,20 @@
 using UnityEngine.UI;
 using Pathfinding;
 
-public abstract class Enemy : MonoBehaviour
+public class Enemy : MonoBehaviour
 {
     [SerializeField] private EnemyDataSO enemyData;
 
-    [SerializeField] private float enemyMoveSpeed;
+    private float enemyMoveSpeed;
     private float pathUpdateInterval = 0.3f;
     private float waypointReachDistance = 0.15f;
 
     protected Player player;
-    [SerializeField] protected float maxHp ;
+     protected float maxHp ;
     protected float currentHp;
     [SerializeField] private Image hpBar;
-    [SerializeField] protected float enterDamege;
-    [SerializeField] protected float stayDamege;
+    protected float enterDamege;
+    protected float stayDamege;
     protected EnemySpawner spawner;
 
     private void ApplyDataSO()
@@ -247,6 +247,12 @@ public abstract class Enemy : MonoBehaviour
     protected virtual void Die()
     {
         GameManager.AddScore();
+        GameObject prefab = GetDropPrefab();
+        if (prefab != null)
+        {
+            GameObject dropItem = Instantiate(prefab, transform.position, Quaternion.identity);
+            Destroy(dropItem, GetDropLifetime());
+        }
 
         if (spawner != null)
         {
@@ -264,6 +270,24 @@ public abstract class Enemy : MonoBehaviour
         if (hpBar != null)
         {
             hpBar.fillAmount = currentHp / maxHp;
+        }
+    }
+
+    protected virtual void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            if (player != null)
+                player.TakeDamage(enterDamege);
+        }
+    }
+
+    protected virtual void OnTriggerStay2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            if (player != null)
+                player.TakeDamage(stayDamege);
         }
     }
 }

@@ -13,8 +13,8 @@ GameObject:
   - component: {fileID: 241989940370316221}
   - component: {fileID: 1677592670318830366}
   - component: {fileID: 7414767472202011817}
-  - component: {fileID: 5704577704898350618}
   - component: {fileID: 2554286666902338846}
+  - component: {fileID: 5704514109253062273}
   m_Layer: 0
   m_Name: BasicEnemy
   m_TagString: Enemy
@@ -192,26 +192,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &5704577704898350618
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5546538898548258549}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3c79714a0e5d53a4aab449e453a6c2eb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BasicEnemy
-  enemyData: {fileID: 11400000, guid: e308dde2d720f9347874879dfc6540d1, type: 2}
-  enemyMoveSpeed: 1.2
-  pathUpdateInterval: 0.3
-  waypointReachDistance: 0.15
-  maxHp: 100
-  hpBar: {fileID: 8967090399059834520}
-  enterDamege: 10
-  stayDamege: 1
 --- !u!114 &2554286666902338846
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -240,6 +220,24 @@ MonoBehaviour:
   tagPenalties: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   graphMask:
     value: -1
+--- !u!114 &5704514109253062273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546538898548258549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aae4037d0546ec948948aea51236161d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Enemy
+  enemyData: {fileID: 11400000, guid: e308dde2d720f9347874879dfc6540d1, type: 2}
+  enemyMoveSpeed: 0
+  maxHp: 0
+  hpBar: {fileID: 8967090399059834520}
+  enterDamege: 0
+  stayDamege: 0
 --- !u!1001 &4008699001968184366
 PrefabInstance:
   m_ObjectHideFlags: 0
