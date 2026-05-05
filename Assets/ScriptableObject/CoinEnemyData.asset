@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyDataSO
   enemyName: CoinEnemy
   maxHp: 120
-  moveSpeed: 1.8
+  moveSpeed: 1.9
   enterDamage: 10
   stayDamage: 1
   dropPrefab: {fileID: 2620486766113095068, guid: a68aa6717683b224d842cd9bed4b4c2f, type: 3}

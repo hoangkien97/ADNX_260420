@@ -39,7 +39,23 @@ public class ApiManager : MonoBehaviour
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        ClearStoredSession();
+        LoadStoredSession();
+    }
+
+    private void LoadStoredSession()
+    {
+        int savedPlayerId = PlayerPrefs.GetInt(PLAYER_ID_KEY, 0);
+        string savedUsername = PlayerPrefs.GetString(USERNAME_KEY, "");
+
+        if (savedPlayerId > 0 && !string.IsNullOrWhiteSpace(savedUsername))
+        {
+            CurrentPlayerId = savedPlayerId;
+            CurrentUsername = savedUsername;
+        }
+        else
+        {
+            ClearStoredSession();
+        }
     }
 
     public void Login(string username, string password,
@@ -173,6 +189,10 @@ public class ApiManager : MonoBehaviour
     {
         CurrentPlayerId = playerId;
         CurrentUsername = username;
+
+        PlayerPrefs.SetInt(PLAYER_ID_KEY, playerId);
+        PlayerPrefs.SetString(USERNAME_KEY, username);
+        PlayerPrefs.Save();
     }
 
     private static void ClearStoredSession()

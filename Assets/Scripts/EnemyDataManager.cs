@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class EnemyDataManager : MonoBehaviour
@@ -9,6 +10,8 @@ public class EnemyDataManager : MonoBehaviour
     [SerializeField] private string dataFileName = "enemy_data.json";
 
     private FileDataHandler dataHandler;
+    private FileSystemWatcher fileWatcher;
+    private bool requiresReload = false;
 
     private void Awake()
     {
@@ -21,6 +24,42 @@ public class EnemyDataManager : MonoBehaviour
     private void Start()
     {
         Load();
+        SetupFileWatcher();
+    }
+
+    private void SetupFileWatcher()
+    {
+        string path = Application.persistentDataPath;
+        if (!Directory.Exists(path)) return;
+
+        fileWatcher = new FileSystemWatcher(path, dataFileName);
+        fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+        fileWatcher.Changed += (s, e) => requiresReload = true;
+        fileWatcher.EnableRaisingEvents = true;
+    }
+
+    private void Update()
+    {
+        if (requiresReload)
+        {
+            requiresReload = false;
+            Invoke(nameof(DelayedLoad), 0.2f);
+        }
+    }
+
+    private void DelayedLoad()
+    {
+        Load();
+        Debug.Log("[EnemyDataManager] Tự động cập nhật data vì file JSON vừa thay đổi!");
+    }
+
+    private void OnDestroy()
+    {
+        if (fileWatcher != null)
+        {
+            fileWatcher.EnableRaisingEvents = false;
+            fileWatcher.Dispose();
+        }
     }
 
     public void Save()
@@ -38,7 +77,8 @@ public class EnemyDataManager : MonoBehaviour
                 moveSpeed    = so.moveSpeed,
                 enterDamage  = so.enterDamage,
                 stayDamage   = so.stayDamage,
-                dropLifetime = so.dropLifetime
+                dropLifetime = so.dropLifetime,
+                dropPrefabName = so.dropPrefab != null ? so.dropPrefab.name : ""
             });
         }
 
@@ -63,6 +103,13 @@ public class EnemyDataManager : MonoBehaviour
             target.enterDamage  = r.enterDamage;
             target.stayDamage   = r.stayDamage;
             target.dropLifetime = r.dropLifetime;
+
+            if (!string.IsNullOrEmpty(r.dropPrefabName))
+            {
+                GameObject prefab = Resources.Load<GameObject>("EnemyDrops/" + r.dropPrefabName);
+                if (prefab != null) target.dropPrefab = prefab;
+                else Debug.LogWarning($"[EnemyDataManager] Drop prefab not found: EnemyDrops/{r.dropPrefabName}");
+            }
         }
     }
 

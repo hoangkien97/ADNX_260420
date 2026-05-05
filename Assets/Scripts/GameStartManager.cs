@@ -11,12 +11,6 @@ public class GameStartManager : MonoBehaviour
     public void GameStart()
     {
         ApiManager.EnsureInstance();
-        if (!ApiManager.IsLoggedIn)
-        {
-            SceneManager.LoadScene("Login");
-            return;
-        }
-
         GameManager.ResetRunState();
         SceneManager.LoadScene("SampleScene");
     }

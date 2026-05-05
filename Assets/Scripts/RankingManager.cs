@@ -139,7 +139,7 @@ public class RankingManager : MonoBehaviour
             }
 
             SetRankingColor(i, GetDefaultColor(i));
-            rankingTexts[i].text = i == 0 ? "Khong tai duoc leaderboard tu Database" : "";
+            rankingTexts[i].text = i == 0 ? "Can't load leaderboard from Database" : "";
         }
     }
 

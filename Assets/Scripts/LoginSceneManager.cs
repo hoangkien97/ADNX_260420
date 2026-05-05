@@ -11,18 +11,29 @@ public class LoginSceneManager : MonoBehaviour
     [SerializeField] private TMP_Text messageText;
     [SerializeField] private Button loginButton;
     [SerializeField] private Button registerButton;
+    [SerializeField] private Button guestButton;
     
     private bool busy;
 
     private void Start()
     {
-        ApiManager.EnsureInstance().Logout();
+        //ApiManager api = ApiManager.EnsureInstance();
+        //if (ApiManager.IsLoggedIn)
+        //{
+        //    SceneManager.LoadScene("GameStart");
+        //    return;
+        //}
+
+        //api.Logout();
         
         if (loginButton != null)
             loginButton.onClick.AddListener(SubmitLogin);
             
         if (registerButton != null)
             registerButton.onClick.AddListener(SubmitRegister);
+
+        if (guestButton != null)
+            guestButton.onClick.AddListener(LoginGuest);
     }
 
     private void SubmitLogin()
@@ -33,6 +44,14 @@ public class LoginSceneManager : MonoBehaviour
     private void SubmitRegister()
     {
         SubmitAuth(true);
+    }
+
+    public void LoginGuest()
+    {
+        if (busy) return;
+       
+        ApiManager.EnsureInstance().Logout();
+        SceneManager.LoadScene("GameStart");
     }
 
     private void SubmitAuth(bool register)
@@ -105,5 +124,6 @@ public class LoginSceneManager : MonoBehaviour
         if (passwordInput != null) passwordInput.interactable = interactable;
         if (loginButton != null) loginButton.interactable = interactable;
         if (registerButton != null) registerButton.interactable = interactable;
+        if (guestButton != null) guestButton.interactable = interactable;
     }
 }

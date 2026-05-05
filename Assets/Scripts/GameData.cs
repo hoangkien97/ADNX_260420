@@ -14,4 +14,5 @@ public class EnemyDataRecord
     public float  enterDamage;
     public float  stayDamage;
     public float  dropLifetime;
+    public string dropPrefabName;   
 }
