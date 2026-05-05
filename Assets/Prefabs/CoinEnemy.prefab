@@ -204,14 +204,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 156bcc2917f165f4191eeed09d93c33b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CoinEnemy
-  enemyMoveSpeed: 1
+  enemyData: {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
+  enemyMoveSpeed: 1.5
   pathUpdateInterval: 0.3
   waypointReachDistance: 0.15
   maxHp: 100
   hpBar: {fileID: 7421538949082028604}
   enterDamege: 15
   stayDamege: 1
-  coinObject: {fileID: 2620486766113095068, guid: a68aa6717683b224d842cd9bed4b4c2f, type: 3}
 --- !u!114 &827416487522411858
 MonoBehaviour:
   m_ObjectHideFlags: 0

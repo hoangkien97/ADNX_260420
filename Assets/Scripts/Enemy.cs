@@ -1,20 +1,34 @@
-using UnityEngine;
+    using UnityEngine;
 using UnityEngine.UI;
 using Pathfinding;
 
 public abstract class Enemy : MonoBehaviour
 {
-    [SerializeField] private float enemyMoveSpeed = 2f;
-    [SerializeField] private float pathUpdateInterval = 0.3f;
-    [SerializeField] private float waypointReachDistance = 0.15f;
+    [SerializeField] private EnemyDataSO enemyData;
+
+    [SerializeField] private float enemyMoveSpeed;
+    private float pathUpdateInterval = 0.3f;
+    private float waypointReachDistance = 0.15f;
 
     protected Player player;
-    [SerializeField] protected float maxHp = 100f;
+    [SerializeField] protected float maxHp ;
     protected float currentHp;
     [SerializeField] private Image hpBar;
-    [SerializeField] protected float enterDamege = 10f;
-    [SerializeField] protected float stayDamege = 1f;
+    [SerializeField] protected float enterDamege;
+    [SerializeField] protected float stayDamege;
     protected EnemySpawner spawner;
+
+    private void ApplyDataSO()
+    {
+        if (enemyData == null) return;
+        enemyMoveSpeed = enemyData.moveSpeed;
+        maxHp          = enemyData.maxHp;
+        enterDamege    = enemyData.enterDamage;
+        stayDamege     = enemyData.stayDamage;
+    }
+
+    protected GameObject GetDropPrefab()   => enemyData != null ? enemyData.dropPrefab  : null;
+    protected float      GetDropLifetime() => enemyData != null ? enemyData.dropLifetime : 7f;
 
     private SpriteRenderer spriteRenderer;
     private Seeker seeker;
@@ -31,6 +45,7 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void Awake()
     {
+        ApplyDataSO();
         spriteRenderer = GetComponent<SpriteRenderer>();
         seeker = GetComponent<Seeker>();
         if (seeker == null)
@@ -41,6 +56,8 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void OnEnable()
     {
+        ApplyDataSO();          
+        statsInitialized = false; 
         player = FindAnyObjectByType<Player>();
         movementPlaneZ = player != null ? player.transform.position.z : 0f;
         transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);

@@ -204,13 +204,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c79714a0e5d53a4aab449e453a6c2eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BasicEnemy
-  enemyMoveSpeed: 1
+  enemyData: {fileID: 11400000, guid: e308dde2d720f9347874879dfc6540d1, type: 2}
+  enemyMoveSpeed: 1.2
+  pathUpdateInterval: 0.3
+  waypointReachDistance: 0.15
   maxHp: 100
   hpBar: {fileID: 8967090399059834520}
   enterDamege: 10
   stayDamege: 1
-  pathUpdateInterval: 0.3
-  waypointReachDistance: 0.15
 --- !u!114 &2554286666902338846
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -26,4 +26,9 @@ public class GameStartManager : MonoBehaviour
         ApiManager.EnsureInstance().Logout();
         SceneManager.LoadScene("Login");
     }
+    public void QuitGame()
+    {
+        EnemyDataManager.Instance?.Save();
+        Application.Quit();
+    }
 }

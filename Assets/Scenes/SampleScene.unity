@@ -2516,6 +2516,7 @@ GameObject:
   m_Component:
   - component: {fileID: 945013244}
   - component: {fileID: 945013245}
+  - component: {fileID: 945013246}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -2554,6 +2555,23 @@ MonoBehaviour:
   txtScore: {fileID: 430447076}
   pausePanel: {fileID: 343205616}
   shopPanel: {fileID: 1449621849}
+--- !u!114 &945013246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 945013243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3ac465b8df21e04195575fe4e591632, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDataManager
+  allEnemyData:
+  - {fileID: 11400000, guid: e308dde2d720f9347874879dfc6540d1, type: 2}
+  - {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
+  - {fileID: 11400000, guid: c6a2fc13332a2a443b17511dc2bfa365, type: 2}
+  dataFileName: enemy_data.json
 --- !u!1 &1032979819
 GameObject:
   m_ObjectHideFlags: 0
@@ -3169,8 +3187,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc3453915cccb44478c8f44c954b7f0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Run
-  speed: 10
-  maxHp: 100
+  speed: 8
+  maxHp: 200
   hpBar: {fileID: 872570357}
   gameManager: {fileID: 945013245}
 --- !u!95 &1197691117
