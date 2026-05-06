@@ -9,7 +9,7 @@ public class EnemyDataManager : MonoBehaviour
     [SerializeField] private EnemyDataSO[] allEnemyData;
     [SerializeField] private string dataFileName = "enemy_data.json";
 
-    private FileDataHandler dataHandler;
+    private FileDataHandler<GameData> dataHandler;
     private FileSystemWatcher fileWatcher;
     private bool requiresReload = false;
 
@@ -18,7 +18,7 @@ public class EnemyDataManager : MonoBehaviour
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        dataHandler = new FileDataHandler(Application.persistentDataPath, dataFileName);
+        dataHandler = new FileDataHandler<GameData>(Application.persistentDataPath, dataFileName);
     }
 
     private void Start()
@@ -120,7 +120,7 @@ public class EnemyDataManager : MonoBehaviour
 
     public void DeleteSave()
     {
-        dataHandler = new FileDataHandler(Application.persistentDataPath, dataFileName);
+        dataHandler = new FileDataHandler<GameData>(Application.persistentDataPath, dataFileName);
         System.IO.File.Delete(System.IO.Path.Combine(Application.persistentDataPath, dataFileName));
     }
 

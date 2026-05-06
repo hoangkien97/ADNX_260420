@@ -19,6 +19,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject pausePanel;
     private bool isPaused = false;
     [SerializeField] private GameObject shopPanel;
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Toggle sfxToggle;
     private static GameManager instance;
 
     public static float BonusSpeed = DefaultBonusSpeed;
@@ -74,6 +76,25 @@ public class GameManager : MonoBehaviour
         if (shopPanel != null)
         {
             shopPanel.SetActive(false);
+        }
+
+        if (musicSlider != null || sfxToggle != null)
+        {
+            AudioManager am = FindAnyObjectByType<AudioManager>();
+            if (am != null)
+            {
+                if (musicSlider != null)
+                {
+                    musicSlider.value = am.GetMusicVolume();
+                    musicSlider.onValueChanged.AddListener(am.SetMusicVolume);
+                }
+                
+                if (sfxToggle != null)
+                {
+                    sfxToggle.isOn = am.GetSfxEnabled();
+                    sfxToggle.onValueChanged.AddListener(am.SetSfxEnabled);
+                }
+            }
         }
     }
 
