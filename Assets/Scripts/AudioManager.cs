@@ -12,15 +12,67 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip backgroundAudioClip;
     private string targetScene = "SampleScene";
     private string currentScene;
+    
+    private FileDataHandler<AudioSettingsData> settingsHandler;
+    private AudioSettingsData currentSettings;
 
     private void Start()
     {
         currentScene = SceneManager.GetActiveScene().name;
+        settingsHandler = new FileDataHandler<AudioSettingsData>(Application.persistentDataPath, "settings.json");
+        
+        LoadSettingsIfNeeded();
+        
+        if (backgroundAudioSource != null) backgroundAudioSource.volume = currentSettings.musicVolume;
+        if (audioSource != null) 
+        {
+            audioSource.volume = currentSettings.musicVolume; 
+            audioSource.mute = !currentSettings.isSfxEnabled;
+        }
 
         if (currentScene == targetScene)
             PlayBackgroundMusic();
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void LoadSettingsIfNeeded()
+    {
+        if (currentSettings == null)
+        {
+            currentSettings = settingsHandler.Load() ?? new AudioSettingsData();
+        }
+    }
+
+    public void SetMusicVolume(float volume)
+    {
+        if (backgroundAudioSource != null) backgroundAudioSource.volume = volume;
+        if (audioSource != null) audioSource.volume = volume;
+        
+        LoadSettingsIfNeeded();
+        currentSettings.musicVolume = volume;
+        settingsHandler.Save(currentSettings);
+    }
+
+    public float GetMusicVolume()
+    {
+        LoadSettingsIfNeeded();
+        return currentSettings.musicVolume;
+    }
+
+    public void SetSfxEnabled(bool isEnabled)
+    {
+        if (audioSource != null) audioSource.mute = !isEnabled;
+        
+        LoadSettingsIfNeeded();
+        currentSettings.isSfxEnabled = isEnabled;
+        settingsHandler.Save(currentSettings);
+    }
+
+    public bool GetSfxEnabled()
+    {
+        LoadSettingsIfNeeded();
+        return currentSettings.isSfxEnabled;
     }
 
     private void OnDestroy()
@@ -67,4 +119,11 @@ public class AudioManager : MonoBehaviour
         if (backgroundAudioSource == null) return;
         backgroundAudioSource.Stop();
     }
+}
+
+[System.Serializable]
+public class AudioSettingsData
+{
+    public float musicVolume = 1f;
+    public bool isSfxEnabled = true;
 }
