@@ -6,7 +6,8 @@ using UnityEngine;
 public class InfinityMap : MonoBehaviour
 {
     [Header("References")]
-    public Transform player;
+    // Dùng camera làm tâm để sinh map (hỗ trợ cả spectate)
+    public Transform target;
     public GameObject[] tilePrefabs;
 
     [Header("Override Size (để 0 = tự động đo từ prefab)")]
@@ -54,16 +55,23 @@ public class InfinityMap : MonoBehaviour
     {
         if (tilePrefabs == null || tilePrefabs.Length == 0)
         { Debug.LogError("[InfiniteMap] Thiếu tilePrefabs!"); return; }
-        if (player == null)
-        { Debug.LogError("[InfiniteMap] Thiếu player reference!"); return; }
 
         MeasureTileSize();   // ← đo kích thước thực trước tiên
 
         for (int i = 0; i < tilePrefabs.Length; i++)
             pools[i] = new Queue<GameObject>();
 
-        lastAnchor = WorldToAnchor(player.position);
-        Refresh();
+        if (target == null)
+        {
+            if (Camera.main != null)
+                target = Camera.main.transform;
+        }
+
+        if (target != null)
+        {
+            lastAnchor = WorldToAnchor(target.position);
+            Refresh();
+        }
 
         if (autoSetupPathfinding)
         {
@@ -73,7 +81,15 @@ public class InfinityMap : MonoBehaviour
 
     void Update()
     {
-        Vector2Int anchor = WorldToAnchor(player.position);
+        if (target == null)
+        {
+            if (Camera.main != null)
+                target = Camera.main.transform;
+            else
+                return;
+        }
+
+        Vector2Int anchor = WorldToAnchor(target.position);
         if (anchor == lastAnchor) return;
         lastAnchor = anchor;
         Refresh();
@@ -305,7 +321,7 @@ public class InfinityMap : MonoBehaviour
             int graphSizeInNodes = Mathf.Max(20, Mathf.RoundToInt(graphWorldSize / nodeSize));
             widthNodes = graphSizeInNodes;
             depthNodes = graphSizeInNodes;
-            graphCenter = player.position;
+            graphCenter = target != null ? target.position : Vector3.zero;
         }
 
         graphCenter.z = 0f;
@@ -336,7 +352,7 @@ public class InfinityMap : MonoBehaviour
         }
 
         mover.graph = graph;
-        mover.target = player;
+        mover.target = target;
         mover.updateDistance = Mathf.Max(1f, graphFollowDistanceInNodes);
         mover.enabled = mover.target != null;
         if (mover.enabled)
@@ -613,15 +629,16 @@ public class InfinityMap : MonoBehaviour
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()
     {
-        if (player == null) return;
+        if (target == null && Camera.main != null) target = Camera.main.transform;
+        if (target == null) return;
         float w = tileW > 0 ? tileW : (overrideWidth > 0 ? overrideWidth : 10f);
         float h = tileH > 0 ? tileH : (overrideHeight > 0 ? overrideHeight : 10f);
 
         Vector2Int anchor = Application.isPlaying
             ? lastAnchor
             : new Vector2Int(
-                Mathf.FloorToInt((player.position.x - w * 0.5f) / w),
-                Mathf.FloorToInt(((isTopDown3D ? player.position.z : player.position.y) - h * 0.5f) / h));
+                Mathf.FloorToInt((target.position.x - w * 0.5f) / w),
+                Mathf.FloorToInt(((isTopDown3D ? target.position.z : target.position.y) - h * 0.5f) / h));
 
         foreach (var o in OFFSETS)
         {
@@ -638,7 +655,7 @@ public class InfinityMap : MonoBehaviour
         }
 
         Gizmos.color = Color.red;
-        Gizmos.DrawSphere(player.position, w * 0.05f);
+        Gizmos.DrawSphere(target.position, w * 0.05f);
     }
 #endif
 }

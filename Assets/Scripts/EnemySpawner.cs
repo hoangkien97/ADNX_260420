@@ -1,106 +1,134 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet;
 
+/// <summary>
+/// EnemySpawner với PurrNet multiplayer support.
+/// - Toàn bộ spawn logic chỉ chạy trên Server (Host)
+/// - Pool dùng UnityProxy.InstantiateDirectly() để bypass PurrNet tracking
+/// - Spawn position dựa trên player gần nhất còn sống
+/// </summary>
 public class EnemySpawner : MonoBehaviour
 {
     [SerializeField] private GameObject[] enemyPrefabs;
     [SerializeField] private float timeBetweenSpawns = 2f;
-    [SerializeField] private int poolSize = 10;
-    private List<GameObject> enemyPool;
+    [SerializeField] private int maxEnemiesInWave = 10;
     [SerializeField] private float numberScale = 1.5f;
     [SerializeField] private GameObject shopPanel;
+    [SerializeField] private int bonusCoin = 5;
+
     private int deadEnemiesCount = 0;
     private int enemiesSpawnedThisWave = 0;
     private float currentStatMultiplier = 1f;
-    [SerializeField] private int bonusCoin = 5;
 
     void Start()
     {
-        Time.timeScale = 1f;
-        enemyPool = new List<GameObject>();
-        for (int i = 0; i < poolSize; i++)
+        // Chỉ Server mới chạy logic sinh quái
+        if (NetworkManager.main != null && !NetworkManager.main.isServer)
         {
-            GameObject enemy = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)]);
-            enemy.SetActive(false);
-            enemyPool.Add(enemy);
+            Debug.Log("[EnemySpawner] Client mode: skipping spawn logic.");
+            return;
         }
+
+        Time.timeScale = 1f;
         StartCoroutine(SpawnEnemyCoroutine());
     }
 
     private IEnumerator SpawnEnemyCoroutine()
     {
-        // Chờ A* graph được scan xong trước khi bắt đầu spawn
-        yield return new WaitUntil(() => AstarPath.active != null && AstarPath.active.isScanning == false && AstarPath.active.graphs != null);
-        yield return new WaitForSeconds(1f); // thêm buffer nhỏ cho chắc
+        // Chờ A* graph scan xong
+        yield return new WaitUntil(() =>
+            AstarPath.active != null &&
+            !AstarPath.active.isScanning &&
+            AstarPath.active.graphs != null);
+        yield return new WaitForSeconds(1f);
 
         while (true)
         {
             yield return new WaitForSeconds(timeBetweenSpawns);
 
             if (shopPanel != null && shopPanel.activeInHierarchy)
+                continue;
+
+            if (enemiesSpawnedThisWave < maxEnemiesInWave)
             {
-                continue; 
-            }
-
-            Camera cam = Camera.main;
-            if (cam == null) yield break; 
-
-            float height = cam.orthographicSize;
-            float width = height * cam.aspect;
-            Vector3 camPos = cam.transform.position;
-            camPos.z = 0f;
-
-            Vector3[] spawnPoints = new Vector3[]
-            {
-            camPos + new Vector3(-width, -height, 0),
-            camPos + new Vector3( width, -height, 0),
-            camPos + new Vector3(-width,  height, 0),
-            camPos + new Vector3( width,  height, 0),
-            };
-
-            if (enemiesSpawnedThisWave < poolSize)
-            {
-                SpawnEnemy(spawnPoints[Random.Range(0, spawnPoints.Length)]);
+                Vector3 spawnPos = GetSpawnPositionNearRandomPlayer();
+                SpawnEnemyNetworked(spawnPos);
                 enemiesSpawnedThisWave++;
             }
         }
     }
 
-    private void SpawnEnemy(Vector3 spawnPosition)
+    private Vector3 GetSpawnPositionNearRandomPlayer()
     {
-        if (enemyPool.Count == 0) return;
-        GameObject enemy = enemyPool[0];
-        enemyPool.RemoveAt(0);
-        enemy.transform.position = spawnPosition;
-        enemy.SetActive(true);
-        Enemy e = enemy.GetComponent<Enemy>();
-        e.Initialize(this);
-        e.ApplyStatMultiplier(currentStatMultiplier);
+        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        List<Player> alive = new List<Player>();
+        foreach (var p in players)
+            if (p != null && !p.IsDead && p.gameObject.activeInHierarchy)
+                alive.Add(p);
+
+        Vector3 center = alive.Count > 0
+            ? alive[Random.Range(0, alive.Count)].transform.position
+            : Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+
+        return GetSpawnEdgePosition(center);
     }
 
-    public void ReturnEnemyToPool(GameObject enemy)
+    private Vector3 GetSpawnEdgePosition(Vector3 center)
     {
-        if (enemy == null) return;
+        Camera cam = Camera.main;
+        if (cam == null) return center + new Vector3(10f, 0f, 0f);
 
-        if (enemyPool.Count < poolSize)
+        float height = cam.orthographicSize;
+        float width  = height * cam.aspect;
+        center.z = 0f;
+
+        Vector3[] corners = new Vector3[]
         {
-            enemy.SetActive(false);
-            enemyPool.Add(enemy);
-        }
+            center + new Vector3(-width, -height, 0),
+            center + new Vector3( width, -height, 0),
+            center + new Vector3(-width,  height, 0),
+            center + new Vector3( width,  height, 0),
+        };
+        return corners[Random.Range(0, corners.Length)];
+    }
+
+    private void SpawnEnemyNetworked(Vector3 spawnPosition)
+    {
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0) return;
+
+        GameObject prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
+        
+        // PurrNet tracking: dùng UnityProxy khi chưa track, Instantiate bình thường khi đã track
+        GameObject enemyObj;
+        if (NetworkManager.main != null && NetworkManager.main.sceneModule != null)
+            enemyObj = UnityProxy.InstantiateDirectly(prefab);
         else
+            enemyObj = Instantiate(prefab);
+
+        enemyObj.transform.position = spawnPosition;
+        enemyObj.SetActive(true);
+
+        // BẮT BUỘC: Spawn lên mạng để sync tới Client
+        if (enemyObj.TryGetComponent<NetworkIdentity>(out var netId) && NetworkManager.main != null)
         {
-            Destroy(enemy);
+            netId.Spawn(prefab, NetworkManager.main);
+        }
+
+        Enemy e = enemyObj.GetComponent<Enemy>();
+        if (e != null)
+        {
+            e.Initialize(this);
+            e.ApplyStatMultiplier(currentStatMultiplier);
         }
     }
 
     public void OnEnemyDied()
     {
         deadEnemiesCount++;
-        if (deadEnemiesCount >= poolSize)
-        {
+        if (deadEnemiesCount >= maxEnemiesInWave)
             StartCoroutine(WaveCompletedRoutine());
-        }
     }
 
     private IEnumerator WaveCompletedRoutine()
@@ -108,25 +136,13 @@ public class EnemySpawner : MonoBehaviour
         GameManager.CountCoin += bonusCoin;
         yield return new WaitForSeconds(3f);
 
-        if (shopPanel != null)
-        {
-            shopPanel.SetActive(true);
-        }
+        if (shopPanel != null) shopPanel.SetActive(true);
         Time.timeScale = 0f;
 
-        int newPoolSize = Mathf.RoundToInt(poolSize * numberScale);
-        int addedEnemies = newPoolSize - poolSize;
-        poolSize = newPoolSize;
+        maxEnemiesInWave = Mathf.RoundToInt(maxEnemiesInWave * numberScale);
         currentStatMultiplier *= numberScale;
-        deadEnemiesCount = 0;
-        enemiesSpawnedThisWave = 0; 
+        deadEnemiesCount       = 0;
+        enemiesSpawnedThisWave = 0;
         GameManager.AdvanceWave();
-
-        for (int i = 0; i < addedEnemies; i++)
-        {
-            GameObject enemyObj = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)]);
-            enemyObj.SetActive(false);
-            enemyPool.Add(enemyObj);
-        }
     }
 }

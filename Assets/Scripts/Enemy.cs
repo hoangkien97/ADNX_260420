@@ -1,8 +1,17 @@
-    using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using Pathfinding;
+using PurrNet;
 
-public class Enemy : MonoBehaviour
+/// <summary>
+/// Enemy với PurrNet multiplayer support.
+/// - A* Pathfinding chỉ chạy trên Server (Host)
+/// - currentHp sync qua SyncVar → clients update HP bar
+/// - TakeDamage chỉ xử lý trên Server
+/// - Die → Server despawn + RpcSpawnLoot broadcast hiệu ứng
+/// - Tìm player gần nhất trong số 4 players
+/// </summary>
+public class Enemy : NetworkBehaviour
 {
     [SerializeField] private EnemyDataSO enemyData;
 
@@ -10,13 +19,15 @@ public class Enemy : MonoBehaviour
     private float pathUpdateInterval = 0.3f;
     private float waypointReachDistance = 0.15f;
 
-    protected Player player;
-     protected float maxHp ;
-    protected float currentHp;
+    protected Player targetPlayer;
+    protected float maxHp;
     [SerializeField] private Image hpBar;
     protected float enterDamege;
     protected float stayDamege;
     protected EnemySpawner spawner;
+
+    // SyncVar HP: Server ghi, tất cả clients đọc
+    [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
 
     private void ApplyDataSO()
     {
@@ -43,24 +54,51 @@ public class Enemy : MonoBehaviour
     private float baseStayDamage;
     private bool statsInitialized = false;
 
+    // ─────────────────── NETWORK LIFECYCLE ───────────────────
+
+    protected override void OnSpawned(bool asServer)
+    {
+        base.OnSpawned(asServer);
+        currentHp.onChanged += OnHpChanged;
+
+        if (asServer)
+        {
+            currentHp.value = maxHp;
+        }
+
+        UpdateHpBar();
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        base.OnDespawned(asServer);
+        currentHp.onChanged -= OnHpChanged;
+    }
+
+    // ─────────────────── UNITY LIFECYCLE ─────────────────────
+
     protected virtual void Awake()
     {
         ApplyDataSO();
         spriteRenderer = GetComponent<SpriteRenderer>();
         seeker = GetComponent<Seeker>();
         if (seeker == null)
-        {
             seeker = gameObject.AddComponent<Seeker>();
-        }
     }
 
     protected virtual void OnEnable()
     {
-        ApplyDataSO();          
-        statsInitialized = false; 
-        player = FindAnyObjectByType<Player>();
-        movementPlaneZ = player != null ? player.transform.position.z : 0f;
-        transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
+        ApplyDataSO();
+        statsInitialized = false;
+
+        // Tìm player gần nhất
+        targetPlayer = FindNearestPlayer();
+        if (targetPlayer != null)
+        {
+            movementPlaneZ = targetPlayer.transform.position.z;
+            transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
+        }
+
         ResetPathState();
         RequestPath();
     }
@@ -68,10 +106,7 @@ public class Enemy : MonoBehaviour
     protected virtual void OnDisable()
     {
         if (seeker != null && !seeker.IsDone())
-        {
             seeker.CancelCurrentPathRequest();
-        }
-
         ResetPathState();
     }
 
@@ -84,98 +119,104 @@ public class Enemy : MonoBehaviour
     {
         if (!statsInitialized)
         {
-            baseMoveSpeed = enemyMoveSpeed;
-            baseMaxHp = maxHp;
+            baseMoveSpeed   = enemyMoveSpeed;
+            baseMaxHp       = maxHp;
             baseEnterDamage = enterDamege;
-            baseStayDamage = stayDamege;
+            baseStayDamage  = stayDamege;
             statsInitialized = true;
         }
 
-        enemyMoveSpeed = baseMoveSpeed * multiplier;
-        maxHp = baseMaxHp * multiplier;
-        enterDamege = baseEnterDamage * multiplier;
-        stayDamege = baseStayDamage * multiplier;
+        enemyMoveSpeed = baseMoveSpeed   * multiplier;
+        maxHp          = baseMaxHp       * multiplier;
+        enterDamege    = baseEnterDamage * multiplier;
+        stayDamege     = baseStayDamage  * multiplier;
 
-        currentHp = maxHp;
+        // Set HP qua currentHp (nếu đã spawned, chỉ server ghi)
+        if (isSpawned)
+        {
+            if (isServer) currentHp.value = maxHp;
+        }
+        else
+        {
+            currentHp.value = maxHp;
+        }
+
         UpdateHpBar();
     }
 
     protected virtual void Start()
     {
-        player = FindAnyObjectByType<Player>();
-        movementPlaneZ = player != null ? player.transform.position.z : 0f;
-        transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
-        currentHp = maxHp;
+        targetPlayer = FindNearestPlayer();
+        if (targetPlayer != null)
+        {
+            movementPlaneZ = targetPlayer.transform.position.z;
+            transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
+        }
+
+        if (!isSpawned)
+        {
+            // Offline: khởi tạo bình thường
+            currentHp.value = maxHp;
+        }
+
         UpdateHpBar();
     }
 
     protected virtual void Update()
     {
+        // A* Pathfinding chỉ chạy trên Server (hoặc offline)
+        if (isSpawned && !isServer) return;
+
         UpdatePathRequest();
         MoveToPlayer();
         FlipEnemy();
     }
 
+    // ─────────────────── PATHFINDING ─────────────────────────
+
     protected void MoveToPlayer()
     {
-        if (player == null)
+        if (targetPlayer == null)
         {
+            targetPlayer = FindNearestPlayer();
             return;
         }
 
-        if (TryMoveAlongPath())
-        {
-            return;
-        }
-        if (AstarPath.active != null)
-        {
-            return;
-        }
+        if (TryMoveAlongPath()) return;
 
-        Vector2 nextPosition = Vector2.MoveTowards(transform.position, player.transform.position, enemyMoveSpeed * Time.deltaTime);
+        // Fallback: Nếu A* chưa có đường đi (đang tính toán), di chuyển thẳng về phía Player
+        Vector2 nextPosition = Vector2.MoveTowards(
+            transform.position, targetPlayer.transform.position, enemyMoveSpeed * Time.deltaTime);
         transform.position = new Vector3(nextPosition.x, nextPosition.y, movementPlaneZ);
     }
 
     private void UpdatePathRequest()
     {
-        if (AstarPath.active == null)
-        {
-            return;
-        }
+        if (AstarPath.active == null) return;
 
-        if (player == null)
-        {
-            player = FindAnyObjectByType<Player>();
-            return;
-        }
+        // Cập nhật target player gần nhất theo thời gian
+        if (targetPlayer == null || targetPlayer.IsDead)
+            targetPlayer = FindNearestPlayer();
 
-        if (Time.time < nextPathRequestTime)
-        {
-            return;
-        }
+        if (targetPlayer == null) return;
+        if (Time.time < nextPathRequestTime) return;
 
         RequestPath();
     }
 
     private void RequestPath()
     {
-        if (AstarPath.active == null || seeker == null || player == null)
-        {
-            return;
-        }
-
-        if (!seeker.IsDone())
-        {
-            return;
-        }
+        if (AstarPath.active == null || seeker == null || targetPlayer == null) return;
+        if (!seeker.IsDone()) return;
 
         nextPathRequestTime = Time.time + pathUpdateInterval;
-        seeker.StartPath(transform.position, player.transform.position, OnPathComplete);
+        seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete);
     }
 
     private void OnPathComplete(Path path)
     {
-        if (!isActiveAndEnabled || path == null || path.error || path.vectorPath == null || path.vectorPath.Count == 0)
+        if (!isActiveAndEnabled || path == null || path.error ||
+            path.vectorPath == null || path.vectorPath.Count == 0)
         {
             currentPath = null;
             return;
@@ -188,21 +229,20 @@ public class Enemy : MonoBehaviour
     private bool TryMoveAlongPath()
     {
         if (currentPath == null || currentPath.vectorPath == null || currentPath.vectorPath.Count == 0)
-        {
             return false;
-        }
 
         while (currentWaypoint < currentPath.vectorPath.Count - 1 &&
-               Vector2.Distance(transform.position, ToMovementPlanePoint(currentPath.vectorPath[currentWaypoint])) <= waypointReachDistance)
+               Vector2.Distance(transform.position,
+                   ToMovementPlanePoint(currentPath.vectorPath[currentWaypoint])) <= waypointReachDistance)
         {
             currentWaypoint++;
         }
 
         Vector3 targetPoint = ToMovementPlanePoint(currentPath.vectorPath[currentWaypoint]);
-        if (float.IsNaN(targetPoint.x) || float.IsNaN(targetPoint.y) || float.IsInfinity(targetPoint.x) || float.IsInfinity(targetPoint.y))
-        {
+        if (float.IsNaN(targetPoint.x) || float.IsNaN(targetPoint.y) ||
+            float.IsInfinity(targetPoint.x) || float.IsInfinity(targetPoint.y))
             return false;
-        }
+
         Vector2 nextPosition = Vector2.MoveTowards(transform.position, targetPoint, enemyMoveSpeed * Time.deltaTime);
         transform.position = new Vector3(nextPosition.x, nextPosition.y, movementPlaneZ);
         return true;
@@ -215,79 +255,122 @@ public class Enemy : MonoBehaviour
         nextPathRequestTime = Time.time;
     }
 
-    private Vector3 ToMovementPlanePoint(Vector3 pathPoint)
+    private Vector3 ToMovementPlanePoint(Vector3 pathPoint) =>
+        new Vector3(pathPoint.x, pathPoint.y, movementPlaneZ);
+
+    // ─────────────────── FIND NEAREST PLAYER ─────────────────
+
+    /// <summary>
+    /// Tìm Player còn sống gần nhất trong số tất cả players (tối đa 4).
+    /// </summary>
+    protected Player FindNearestPlayer()
     {
-        return new Vector3(pathPoint.x, pathPoint.y, movementPlaneZ);
+        Player[] allPlayers = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        Player nearest = null;
+        float minDist = float.MaxValue;
+
+        foreach (Player p in allPlayers)
+        {
+            if (p == null || p.IsDead || !p.gameObject.activeInHierarchy) continue;
+
+            float dist = Vector2.Distance(transform.position, p.transform.position);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearest = p;
+            }
+        }
+
+        return nearest;
     }
 
     protected void FlipEnemy()
     {
-        if (player != null)
-        {
-            spriteRenderer.flipX = player.transform.position.x < transform.position.x;
-        }
+        if (targetPlayer != null)
+            spriteRenderer.flipX = targetPlayer.transform.position.x < transform.position.x;
 
         if (hpBar != null)
-        {
             hpBar.transform.rotation = Quaternion.identity;
-        }
     }
+
+    // ─────────────────── DAMAGE & DEATH ──────────────────────
 
     public virtual void TakeDamage(float damage)
     {
-        currentHp -= damage;
-        currentHp = Mathf.Clamp(currentHp, 0, maxHp);
-        UpdateHpBar();
-        if (currentHp <= 0)
-        {
+        // Chỉ Server xử lý
+        if (isSpawned && !isServer) return;
+
+        float newHp = Mathf.Clamp(currentHp.value - damage, 0f, maxHp);
+        currentHp.value = newHp;
+
+        if (newHp <= 0f)
             Die();
-        }
     }
 
     protected virtual void Die()
     {
         GameManager.AddScore();
-        GameObject prefab = GetDropPrefab();
-        if (prefab != null)
-        {
-            GameObject dropItem = Instantiate(prefab, transform.position, Quaternion.identity);
-            Destroy(dropItem, GetDropLifetime());
-        }
+        RpcSpawnLoot(transform.position);
 
         if (spawner != null)
         {
             spawner.OnEnemyDied();
-            spawner.ReturnEnemyToPool(gameObject);
         }
+        
+        if (isSpawned)
+            Despawn();
         else
-        {
             Destroy(gameObject);
-        }
+    }
+
+    /// <summary>
+    /// Broadcast hiệu ứng loot drop tới tất cả clients.
+    /// </summary>
+    [ObserversRpc(runLocally: true)]
+    private void RpcSpawnLoot(Vector3 position)
+    {
+        GameObject prefab = GetDropPrefab();
+        if (prefab == null) return;
+
+        GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
+        Destroy(dropItem, GetDropLifetime());
+    }
+
+    // ─────────────────── HP BAR ──────────────────────────────
+
+    private void OnHpChanged(float newHp)
+    {
+        UpdateHpBar();
     }
 
     protected void UpdateHpBar()
     {
-        if (hpBar != null)
-        {
-            hpBar.fillAmount = currentHp / maxHp;
-        }
+        if (hpBar != null && maxHp > 0f)
+            hpBar.fillAmount = currentHp.value / maxHp;
     }
+
+    // ─────────────────── COLLISION ───────────────────────────
 
     protected virtual void OnTriggerEnter2D(Collider2D collision)
     {
+        // Chỉ Server xử lý damage
+        if (isSpawned && !isServer) return;
+
         if (collision.CompareTag("Player"))
         {
-            if (player != null)
-                player.TakeDamage(enterDamege);
+            Player p = collision.GetComponent<Player>();
+            if (p != null) p.TakeDamage(enterDamege);
         }
     }
 
     protected virtual void OnTriggerStay2D(Collider2D collision)
     {
+        if (isSpawned && !isServer) return;
+
         if (collision.CompareTag("Player"))
         {
-            if (player != null)
-                player.TakeDamage(stayDamege);
+            Player p = collision.GetComponent<Player>();
+            if (p != null) p.TakeDamage(stayDamege);
         }
     }
 }
