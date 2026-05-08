@@ -1339,6 +1339,7 @@ GameObject:
   - component: {fileID: 1997236069}
   - component: {fileID: 1997236068}
   - component: {fileID: 1997236072}
+  - component: {fileID: 1997236073}
   m_Layer: 0
   m_Name: 'NetworkBootstrap '
   m_TagString: Untagged
@@ -1443,6 +1444,22 @@ MonoBehaviour:
   _certPath: 
   _certPassword: 
   _sslProtocols: 0
+--- !u!114 &1997236073
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1997236067}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b76f42349e746b39a324dce6dbd231c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.UTP.Runtime::PurrNet.UTP.UTPTransport
+  _serverPort: 5004
+  _dedicatedServer: 0
+  _peerToPeer: 1
+  _address: 127.0.0.1
 --- !u!1 &2102331802
 GameObject:
   m_ObjectHideFlags: 0
