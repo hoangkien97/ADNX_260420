@@ -271,14 +271,14 @@ MonoBehaviour:
   _invertedPathToNearestParent: 
   _directChildren: []
   _syncPosition: 1
-  _syncRotation: 1
-  _syncScale: 1
-  _syncParent: 1
+  _syncRotation: 0
+  _syncScale: 0
+  _syncParent: 0
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
   _characterControllerPatch: 0
-  _ownerAuth: 1
+  _ownerAuth: 0
   _interpolationTiming: 0
 --- !u!114 &6944145477491001122
 MonoBehaviour:

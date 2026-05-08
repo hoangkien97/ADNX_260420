@@ -164,11 +164,14 @@ public class Enemy : NetworkBehaviour
 
     protected virtual void Update()
     {
-        // A* Pathfinding chỉ chạy trên Server (hoặc offline)
-        if (isSpawned && !isServer) return;
+        // AI chỉ server chạy
+        if (!isSpawned || isServer)
+        {
+            UpdatePathRequest();
+            MoveToPlayer();
+        }
 
-        UpdatePathRequest();
-        MoveToPlayer();
+        // ALL clients đều flip sprite
         FlipEnemy();
     }
 

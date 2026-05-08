@@ -78,13 +78,20 @@ public class NetworkBootstrap : MonoBehaviour
         // Chờ socket thực sự được giải phóng (release) nếu vừa gọi Stop
         yield return new WaitWhile(() => networkManager.isServer || networkManager.isClient);
 
-        // Đọc port thực tế từ UDPTransport thay vì hardcode
+        // Đọc port thực tế từ Transport (Hỗ trợ cả UDP và Web/TCP)
         ushort serverPort = 5000;
+        bool isTcp = false;
+        
         if (networkManager.transport is UDPTransport udpForPort)
             serverPort = udpForPort.serverPort;
-
+        else if (networkManager.transport is WebTransport webForPort)
+        {
+            serverPort = webForPort.serverPort;
+            isTcp = true;
+        }
+        
         // Kiểm tra xem port có đang bị chiếm không để tránh văng log lỗi đỏ (Bind exception)
-        bool portInUse = !IsPortAvailable(serverPort);
+        bool portInUse = !IsPortAvailable(serverPort, isTcp);
 
         bool hostStarted = false;
         if (!portInUse)
@@ -222,13 +229,20 @@ public class NetworkBootstrap : MonoBehaviour
             yield return null;
         }
 
-        // 3. Chờ UDP port thực sự được OS giải phóng (tối đa 2s)
+        // 3. Chờ UDP/TCP port thực sự được OS giải phóng (tối đa 2s)
         ushort serverPort = 5000;
+        bool isTcp = false;
+        
         if (networkManager?.transport is UDPTransport udpTransport)
             serverPort = udpTransport.serverPort;
+        else if (networkManager?.transport is WebTransport webTransport)
+        {
+            serverPort = webTransport.serverPort;
+            isTcp = true;
+        }
 
         float portWaitStart = Time.realtimeSinceStartup;
-        while (Time.realtimeSinceStartup - portWaitStart < 2f && !IsPortAvailable(serverPort))
+        while (Time.realtimeSinceStartup - portWaitStart < 2f && !IsPortAvailable(serverPort, isTcp))
         {
             yield return null;
         }
@@ -259,22 +273,43 @@ public class NetworkBootstrap : MonoBehaviour
         if (onClientState != null) networkManager.onClientConnectionState -= onClientState;
     }
 
-    // Kiểm tra xem port UDP có đang được sử dụng không
-    private bool IsPortAvailable(int port)
+    // Kiểm tra xem port UDP/TCP có đang được sử dụng không
+    private bool IsPortAvailable(int port, bool isTcp = false)
     {
         bool isAvailable = true;
-        System.Net.Sockets.UdpClient udpClient = null;
-        try
+        
+        if (isTcp)
         {
-            udpClient = new System.Net.Sockets.UdpClient(port);
+            System.Net.Sockets.TcpListener tcpListener = null;
+            try
+            {
+                tcpListener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Any, port);
+                tcpListener.Start();
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                isAvailable = false;
+            }
+            finally
+            {
+                tcpListener?.Stop();
+            }
         }
-        catch (System.Net.Sockets.SocketException)
+        else
         {
-            isAvailable = false;
-        }
-        finally
-        {
-            udpClient?.Close();
+            System.Net.Sockets.UdpClient udpClient = null;
+            try
+            {
+                udpClient = new System.Net.Sockets.UdpClient(port);
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                isAvailable = false;
+            }
+            finally
+            {
+                udpClient?.Close();
+            }
         }
         return isAvailable;
     }
