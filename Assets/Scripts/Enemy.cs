@@ -29,6 +29,9 @@ public class Enemy : NetworkBehaviour
     // SyncVar HP: Server ghi, tất cả clients đọc
     [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
 
+    // Đồng bộ hệ số sức mạnh (Multiplier) cho Client để thanh HP và tốc độ chạy đúng
+    [SerializeField] private SyncVar<float> syncMultiplier = new SyncVar<float>(1f, ownerAuth: false);
+
     private void ApplyDataSO()
     {
         if (enemyData == null) return;
@@ -60,10 +63,16 @@ public class Enemy : NetworkBehaviour
     {
         base.OnSpawned(asServer);
         currentHp.onChanged += OnHpChanged;
+        syncMultiplier.onChanged += OnMultiplierChanged;
 
         if (asServer)
         {
             currentHp.value = maxHp;
+        }
+        else
+        {
+            // Client vừa vào game, áp dụng ngay multiplier từ Server
+            ApplyStatMultiplierLocal(syncMultiplier.value);
         }
 
         UpdateHpBar();
@@ -73,6 +82,7 @@ public class Enemy : NetworkBehaviour
     {
         base.OnDespawned(asServer);
         currentHp.onChanged -= OnHpChanged;
+        syncMultiplier.onChanged -= OnMultiplierChanged;
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
@@ -116,6 +126,25 @@ public class Enemy : NetworkBehaviour
     }
 
     public void ApplyStatMultiplier(float multiplier)
+    {
+        // Server lưu biến đồng bộ, Client sẽ tự động nhận qua event OnMultiplierChanged
+        if (isSpawned && isServer)
+        {
+            syncMultiplier.value = multiplier;
+        }
+        
+        ApplyStatMultiplierLocal(multiplier);
+    }
+
+    private void OnMultiplierChanged(float newMultiplier)
+    {
+        if (!isServer)
+        {
+            ApplyStatMultiplierLocal(newMultiplier);
+        }
+    }
+
+    private void ApplyStatMultiplierLocal(float multiplier)
     {
         if (!statsInitialized)
         {

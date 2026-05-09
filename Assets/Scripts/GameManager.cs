@@ -35,6 +35,7 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Toggle sfxToggle;
     private static GameManager instance;
+    public static GameManager Instance => instance;
 
     // Bonus stats: per-player static (shop riêng từng người)
     public static float BonusSpeed  = DefaultBonusSpeed;
@@ -226,6 +227,44 @@ public class GameManager : NetworkBehaviour
         BonusMaxHP += amount;
         Player player = FindAnyObjectByType<Player>();
         if (player != null) player.AddMaxHP(amount);
+    }
+
+    // ─────────────────── SHOP NETWORK SYNC ─────────────────────
+
+    public void OpenShopForAll()
+    {
+        if (isServer) RpcOpenShop();
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcOpenShop()
+    {
+        if (shopPanel != null) shopPanel.SetActive(true);
+        Time.timeScale = 0f;
+    }
+
+    public void CloseShopForAll()
+    {
+        // Chỉ Server mới có quyền ra lệnh đóng Shop cho toàn mạng lưới
+        if (isServer) RpcCloseShop();
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcCloseShop()
+    {
+        if (shopPanel != null) shopPanel.SetActive(false);
+        Time.timeScale = 1f;
+    }
+
+    public void GrantBonusCoinForAll(int amount)
+    {
+        if (isServer) RpcGrantBonusCoin(amount);
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcGrantBonusCoin(int amount)
+    {
+        CountCoin += amount;
     }
 
     // ─────────────────── UI CALLBACKS ────────────────────────

@@ -79,8 +79,18 @@ public class ShopManager : MonoBehaviour
 
     public void ContinueGame()
     {
-        Time.timeScale = 1f;
-        gameObject.SetActive(false);
+        // Chỉ cho phép Host (Server) bấm nút này để đóng Shop cho toàn mạng lưới
+        if (GameManager.Instance != null)
+        {
+            if (!GameManager.Instance.isServer) return;
+            GameManager.Instance.CloseShopForAll();
+        }
+        else
+        {
+            // Fallback offline
+            Time.timeScale = 1f;
+            gameObject.SetActive(false);
+        }
     }
 
     private void ApplyEffect(ShopItemSO item)
