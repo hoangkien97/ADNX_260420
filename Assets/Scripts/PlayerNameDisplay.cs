@@ -5,22 +5,11 @@ public class PlayerNameDisplay : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI nameText; 
 
-    private void Start()
+    public void SetName(string name)
     {
-
-        if (ApiManager.EnsureInstance() != null && ApiManager.IsLoggedIn)
+        if (nameText != null)
         {
-            if (nameText != null)
-            {
-                nameText.text = ApiManager.CurrentUsername;
-            }
-        }
-        else
-        {
-            if (nameText != null)
-            {
-                nameText.text = "Guest";
-            }
+            nameText.text = name;
         }
     }
 }

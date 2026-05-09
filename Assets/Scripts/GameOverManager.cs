@@ -24,6 +24,10 @@ public class GameOverManager : MonoBehaviour
     }
     public void GoMainMenu()
     {
+        NetworkBootstrap bootstrap = NetworkBootstrap.Instance
+            ?? FindAnyObjectByType<NetworkBootstrap>();
+        bootstrap?.Disconnect();
+
         SceneManager.LoadScene("GameStart");
     }
     public void QuitGame()
@@ -33,6 +37,18 @@ public class GameOverManager : MonoBehaviour
     public void RestartGame()
     {
         GameManager.ResetRunState();
-        SceneManager.LoadScene("SampleScene");
+        Time.timeScale = 1f;
+
+        NetworkBootstrap bootstrap = NetworkBootstrap.Instance
+            ?? FindAnyObjectByType<NetworkBootstrap>();
+
+        if (bootstrap != null)
+        {
+            bootstrap.RestartAsHost("SampleScene");
+        }
+        else
+        {
+            SceneManager.LoadScene("SampleScene");
+        }
     }
 }
