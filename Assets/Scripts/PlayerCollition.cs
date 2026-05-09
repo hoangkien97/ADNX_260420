@@ -17,40 +17,75 @@ public class PlayerCollition : NetworkBehaviour
         // Chỉ owner của player này mới nhặt item
         if (isSpawned && !isOwner) return;
 
-        if (collision.CompareTag("Coin"))
+        if (collision.CompareTag("Coin") || collision.CompareTag("Heal"))
+        {
+            bool isHeal = collision.CompareTag("Heal");
+            float healValue = 0f;
+            if (isHeal)
+            {
+                HealItem healItem = collision.GetComponent<HealItem>();
+                if (healItem != null) healValue = healItem.healValue;
+            }
+
+            if (isSpawned)
+            {
+                // Gọi Server để Server xử lý despawn chung cho tất cả
+                if (collision.TryGetComponent<PurrNet.NetworkIdentity>(out var netId))
+                {
+                    CmdPickupItem(netId, isHeal, healValue);
+                    
+                    // Ẩn tạm thời ở Client nội bộ để có cảm giác nhặt được ngay lập tức (Client-Side Prediction)
+                    collision.gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                // Offline Mode
+                ProcessPickupLocal(isHeal, healValue);
+                Destroy(collision.gameObject);
+            }
+        }
+    }
+
+    private void ProcessPickupLocal(bool isHeal, float healValue)
+    {
+        if (isHeal)
+        {
+            Player player = GetComponent<Player>();
+            if (player != null) player.Heal(healValue);
+            audioManager?.PlayItemSound();
+        }
+        else
         {
             GameManager.UpdateCoin();
             if (txtCoin != null)
                 txtCoin.text = GameManager.CountCoin.ToString();
-            Destroy(collision.gameObject);
             audioManager?.PlayCoinSound();
-        }
-
-        if (collision.CompareTag("Heal"))
-        {
-            Player player = GetComponent<Player>();
-            HealItem healItem = collision.GetComponent<HealItem>();
-            if (player != null && healItem != null)
-            {
-                // Gửi lên server để server xử lý Heal (vì TakeDamage/Heal là server-side)
-                if (isSpawned)
-                    CmdHeal(healItem.healValue);
-                else
-                    player.Heal(healItem.healValue);
-            }
-            Destroy(collision.gameObject);
-            audioManager?.PlayItemSound();
         }
     }
 
     /// <summary>
-    /// Owner gửi lên Server để server cộng HP.
+    /// Gửi yêu cầu nhặt đồ lên Server. Server sẽ là người phán xử ai nhặt được (để tránh 2 người nhặt cùng lúc).
     /// </summary>
     [ServerRpc(requireOwnership: true)]
-    private void CmdHeal(float amount)
+    private void CmdPickupItem(PurrNet.NetworkIdentity itemNetId, bool isHeal, float healValue)
     {
-        Player player = GetComponent<Player>();
-        if (player != null)
-            player.Heal(amount);
+        // 1. Server kiểm tra xem item này còn tồn tại không (chưa bị người khác nhặt mất)
+        if (itemNetId == null || !itemNetId.isSpawned) return;
+
+        // 2. Nếu hợp lệ, Server gọi Despawn để xóa item khỏi tất cả các máy
+        itemNetId.Despawn();
+
+        // 3. Server báo lại cho đúng người chơi này là "Bạn đã nhặt thành công, cộng máu/tiền đi"
+        RpcGrantPickup(isHeal, healValue);
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcGrantPickup(bool isHeal, float healValue)
+    {
+        // Nhận lệnh từ Server, chỉ Owner của nhân vật này mới thực hiện cộng tiền/máu để tránh cộng 2 lần trên máy người khác
+        if (!isOwner) return;
+
+        ProcessPickupLocal(isHeal, healValue);
     }
 }

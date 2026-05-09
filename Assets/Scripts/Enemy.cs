@@ -289,8 +289,12 @@ public class Enemy : NetworkBehaviour
 
     protected void FlipEnemy()
     {
+        if (targetPlayer == null || targetPlayer.IsDead)
+            targetPlayer = FindNearestPlayer();
+
         if (targetPlayer != null)
-            spriteRenderer.flipX = targetPlayer.transform.position.x < transform.position.x;
+            spriteRenderer.flipX =
+                targetPlayer.transform.position.x < transform.position.x;
 
         if (hpBar != null)
             hpBar.transform.rotation = Quaternion.identity;
@@ -313,7 +317,8 @@ public class Enemy : NetworkBehaviour
     protected virtual void Die()
     {
         GameManager.AddScore();
-        RpcSpawnLoot(transform.position);
+        if (isServer || !isSpawned)
+            SpawnLoot(transform.position);
 
         if (spawner != null)
         {
@@ -326,17 +331,45 @@ public class Enemy : NetworkBehaviour
             Destroy(gameObject);
     }
 
-    /// <summary>
-    /// Broadcast hiệu ứng loot drop tới tất cả clients.
-    /// </summary>
-    [ObserversRpc(runLocally: true)]
-    private void RpcSpawnLoot(Vector3 position)
+    /// Sinh vật phẩm trên Server và đồng bộ qua mạng cho mọi người.
+    /// Sinh vật phẩm trên Server và đồng bộ qua mạng cho mọi người.
+    private void SpawnLoot(Vector3 position)
     {
         GameObject prefab = GetDropPrefab();
         if (prefab == null) return;
 
-        GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
-        Destroy(dropItem, GetDropLifetime());
+        if (isSpawned)
+        {
+            // Network mode: Spawn qua PurrNet
+            GameObject dropItem = UnityProxy.InstantiateDirectly(prefab);
+            dropItem.transform.position = position;
+
+            if (dropItem.TryGetComponent<PurrNet.NetworkIdentity>(out var netId))
+                netId.Spawn(prefab, networkManager);
+
+            // Cấy bộ đếm giờ vào Item, truyền thời gian lấy từ JSON
+            ItemDespawner despawner = dropItem.AddComponent<ItemDespawner>();
+            despawner.StartDespawn(GetDropLifetime());
+        }
+        else
+        {
+            // Offline mode
+            GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
+            Destroy(dropItem, GetDropLifetime());
+        }
+    }
+
+
+    private System.Collections.IEnumerator DespawnItemAfterDelay(GameObject item, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (item != null)
+        {
+            if (item.TryGetComponent<NetworkIdentity>(out var netId) && netId.isSpawned)
+                netId.Despawn();
+            else
+                Destroy(item);
+        }
     }
 
     // ─────────────────── HP BAR ──────────────────────────────
