@@ -18,6 +18,8 @@ public class Enemy : NetworkBehaviour
     private float enemyMoveSpeed;
     private float pathUpdateInterval = 0.3f;
     private float waypointReachDistance = 0.15f;
+    private float retargetInterval = 1f;     // Tần suất tìm lại player gần nhất (giây)
+    private float nextRetargetTime = 0f;
 
     protected Player targetPlayer;
     protected float maxHp;
@@ -226,9 +228,22 @@ public class Enemy : NetworkBehaviour
     {
         if (AstarPath.active == null) return;
 
-        // Cập nhật target player gần nhất theo thời gian
+        // Cập nhật target player: tìm lại nếu đang null/chết, hoặc theo chu kỳ retargetInterval
         if (targetPlayer == null || targetPlayer.IsDead)
+        {
             targetPlayer = FindNearestPlayer();
+            nextRetargetTime = Time.time + retargetInterval;
+        }
+        else if (Time.time >= nextRetargetTime)
+        {
+            // Tìm lại player gần nhất – nếu có player khác gần hơn thì đổi mục tiêu
+            Player nearest = FindNearestPlayer();
+            if (nearest != null && nearest != targetPlayer)
+            {
+                targetPlayer = nearest;
+            }
+            nextRetargetTime = Time.time + retargetInterval;
+        }
 
         if (targetPlayer == null) return;
         if (Time.time < nextPathRequestTime) return;
