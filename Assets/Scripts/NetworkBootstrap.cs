@@ -40,6 +40,55 @@ public class NetworkBootstrap : MonoBehaviour
             Instance = null;
     }
 
+    private bool wasClientConnected = false;
+
+    private void Update()
+    {
+        if (networkManager == null) return;
+
+        if (networkManager.isClient)
+        {
+            wasClientConnected = true;
+        }
+        else if (wasClientConnected && !networkManager.isServer)
+        {
+            // Bị mất kết nối từ Server (Host Quit hoặc rớt mạng)
+            wasClientConnected = false;
+            Debug.Log("[NetworkBootstrap] Bị mất kết nối với Server. Tự động quay về GameStart.");
+            DisconnectAndLoad("GameStart");
+        }
+    }
+
+    public void DisconnectAndLoad(string sceneName)
+    {
+        StartCoroutine(DisconnectAndLoadCoroutine(sceneName));
+    }
+
+    private System.Collections.IEnumerator DisconnectAndLoadCoroutine(string sceneName)
+    {
+        // Bước 1: Báo Server despawn tất cả player của mình trước khi ngắt kết nối
+        // (gửi ServerRpc – phải chờ packet được gửi đi trước khi Disconnect)
+        Player.NotifyAllPlayersLeaving();
+        
+        // Chờ 5 frame để PurrNet kịp flush ServerRpc packet lên Server
+        for (int i = 0; i < 5; i++) yield return null;
+
+        // Bước 2: Ngắt kết nối
+        Disconnect();
+        
+        // Chờ tối đa 3 giây để PurrNet thực sự ngắt kết nối
+        float waitStart = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - waitStart < 3f && (networkManager.isServer || networkManager.isClient))
+        {
+            yield return null;
+        }
+
+        // Chờ thêm 0.15s (đảm bảo PurrNet chạy xong ít nhất 2 Network Ticks để Cleanup dọn dẹp sạch sẽ)
+        yield return new WaitForSecondsRealtime(0.15f);
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+    }
+
     // ─────────────────── HOST ────────────────────────────────
 
     /// <summary>

@@ -51,7 +51,12 @@ public class MultiplayerGridManager : MonoBehaviour
         foreach (var p in keysToRemove)
         {
             ProceduralGridMover mover = playerMovers[p];
-            if (mover != null) Destroy(mover);
+            if (mover != null)
+            {
+                mover.enabled = false; // Ngăn chặn Update() gọi target.position
+                mover.target = null;
+                Destroy(mover);
+            }
             playerMovers.Remove(p);
             // Không nên xóa hẳn GridGraph vì có thể gây lỗi Crash A* (do luồng phụ đang chạy)
             // Chỉ cần gỡ ProceduralGridMover là đủ, Graph cũ sẽ bị bỏ hoang hoặc xài lại sau.

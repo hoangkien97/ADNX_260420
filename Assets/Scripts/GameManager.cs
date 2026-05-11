@@ -218,7 +218,16 @@ public class GameManager : NetworkBehaviour
     {
         ResetRunState();
         Time.timeScale = 1f;
-        SceneManager.LoadScene("GameStart");
+
+        NetworkBootstrap bootstrap = NetworkBootstrap.Instance ?? FindAnyObjectByType<NetworkBootstrap>();
+        if (bootstrap != null)
+        {
+            bootstrap.DisconnectAndLoad("GameStart");
+        }
+        else
+        {
+            SceneManager.LoadScene("GameStart");
+        }
     }
 
     // ─────────────────── SHOP UPGRADES ───────────────────────

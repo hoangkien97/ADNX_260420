@@ -382,7 +382,7 @@ MonoBehaviour:
   _invertedPathToNearestParent: 
   _directChildren: []
   speed: 8
-  maxHp: 50000
+  maxHp: 500
   hpBar: {fileID: 1657361487405542532}
   currentHp:
     _value: 100

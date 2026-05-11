@@ -86,6 +86,7 @@ namespace Pathfinding {
 		/// <summary>Update is called once per frame</summary>
 		void Update () {
 			if (graph == null) return;
+			if (target == null) { enabled = false; return; } // Null check để tránh MissingReferenceException khi Player bị Destroy
 
 			// Calculate where the graph center and the target position is in graph space
 			var graphCenterInGraphSpace = PointToGraphSpace(graph.center);
