@@ -70,8 +70,17 @@ public class Gun : NetworkBehaviour
     {
         if (Time.timeScale == 0) return;
 
-        // Chỉ owner mới xử lý input
-        if (isSpawned && !isOwner) return;
+        // SÚNG NẰM Ở CHILD OBJECT: Phải check quyền sở hữu dựa trên Player cha
+        Player parentPlayer = GetComponentInParent<Player>();
+        if (parentPlayer != null)
+        {
+            if (parentPlayer.isSpawned && !parentPlayer.isOwner) return;
+        }
+        else
+        {
+            // Fallback nếu súng không nằm trong Player
+            if (isSpawned && !isOwner) return;
+        }
 
         RotateGun();
         Shoot();
@@ -149,6 +158,16 @@ public class Gun : NetworkBehaviour
 
         // Spawn bullet dưới dạng thường – PurrNet sẽ tự track nếu có NetworkIdentity
         GameObject bullet = UnityProxy.InstantiateDirectly(bulletPrefabs);
+
+        // Gắn "thông tin người bắn" và áp BonusDamage TRƯỚC khi đặt vị trí
+        // (tránh trường hợp quái đứng sát → trigger va chạm trước khi kịp cộng bonus)
+        PlayerBullet pb = bullet.GetComponent<PlayerBullet>();
+        if (pb != null)
+        {
+            pb.SetShooter(GetComponentInParent<Player>());
+            pb.ApplyBonusDamage(GameManager.BonusDamage);
+        }
+
         bullet.transform.SetPositionAndRotation(position, rotation);
 
         // Nếu bullet có NetworkIdentity, spawn nó lên network

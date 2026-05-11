@@ -114,14 +114,21 @@ public class ShopManager : MonoBehaviour
 
     private void RefreshPlayerStatTexts()
     {
-        if (player == null)
+        // Luôn tìm lại local player vì nếu chơi lại hoặc có người mới vào, reference có thể sai
+        player = null;
+        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        foreach (var p in players)
         {
-            player = FindAnyObjectByType<Player>();
+            if (!p.isSpawned || p.isOwner) 
+            {
+                player = p;
+                break;
+            }
         }
 
-        if (gun == null)
+        if (player != null)
         {
-            gun = FindAnyObjectByType<Gun>();
+            gun = player.GetComponentInChildren<Gun>();
         }
 
         if (statHP != null)

@@ -203,6 +203,7 @@ GameObject:
   - component: {fileID: 2799780893124647343}
   - component: {fileID: 461220030118547257}
   - component: {fileID: 8249543089458070325}
+  - component: {fileID: 2801104453048643876}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -381,7 +382,7 @@ MonoBehaviour:
   _invertedPathToNearestParent: 
   _directChildren: []
   speed: 8
-  maxHp: 500
+  maxHp: 50000
   hpBar: {fileID: 1657361487405542532}
   currentHp:
     _value: 100
@@ -527,6 +528,31 @@ MonoBehaviour:
   - type: 1
     name: flipX
   _ownerAuth: 1
+--- !u!114 &2801104453048643876
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2369793308085483332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b598b9d8509d64abb9fdaf07fa3f6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkAnimator
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _animator: {fileID: 3420491125172564070}
+  _ownerAuth: 1
+  _autoSyncParameters: 1
+  _dontSyncParameters: []
 --- !u!1 &4380611392603439068
 GameObject:
   m_ObjectHideFlags: 0

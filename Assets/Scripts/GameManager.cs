@@ -5,7 +5,8 @@ using PurrNet;
 
 /// <summary>
 /// GameManager với PurrNet multiplayer support.
-/// - Score và Wave: Server ghi, tất cả clients đọc (SyncVar)
+/// - Score: local per-player (mỗi người có điểm riêng)
+/// - Wave: local per-player (mỗi người có wave riêng để lưu)
 /// - CountCoin: local per-player (shop riêng từng người)
 /// - BonusSpeed, BonusDamage, BonusMaxHP: vẫn static vì per-player (shop riêng)
 /// - Pause: chỉ dừng local client, không sync
@@ -25,9 +26,11 @@ public class GameManager : NetworkBehaviour
     // Coin: local per-player (không sync)
     private static int countCoin = 0;
 
-    // Score và Wave: sync qua SyncVar (Server ghi)
-    [SerializeField] private SyncVar<int> syncScore = new SyncVar<int>(0, ownerAuth: false);
-    [SerializeField] private SyncVar<int> syncWave  = new SyncVar<int>(1, ownerAuth: false);
+    // Score: local per-player (không sync, mỗi người có điểm riêng)
+    private static int score = 0;
+
+    // Wave: local per-player (không sync, mỗi người có wave riêng để lưu)
+    private static int wave = DefaultWave;
 
     [SerializeField] private GameObject pausePanel;
     private bool isPaused = false;
@@ -56,30 +59,27 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    // ─────────────────── SCORE (SYNCED) ──────────────────────
+    // ─────────────────── SCORE (LOCAL PER-PLAYER) ─────────────
 
     public static int Score
     {
-        get => instance != null ? instance.syncScore.value : 0;
+        get => score;
         set
         {
-            if (instance == null) return;
-            // Chỉ server mới ghi SyncVar (hoặc offline)
-            if (instance.isSpawned && !instance.isServer) return;
-            instance.syncScore.value = Mathf.Max(DefaultScore, value);
+            score = Mathf.Max(DefaultScore, value);
+            instance?.UpdateScoreText();
         }
     }
 
-    // ─────────────────── WAVE (SYNCED) ───────────────────────
+    // ─────────────────── WAVE (LOCAL PER-PLAYER) ─────────────
 
     public static int Wave
     {
-        get => instance != null ? instance.syncWave.value : DefaultWave;
+        get => wave;
         private set
         {
-            if (instance == null) return;
-            if (instance.isSpawned && !instance.isServer) return;
-            instance.syncWave.value = Mathf.Max(DefaultWave, value);
+            wave = Mathf.Max(DefaultWave, value);
+            instance?.UpdateScoreText();
         }
     }
 
@@ -88,18 +88,7 @@ public class GameManager : NetworkBehaviour
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
-
-        syncScore.onChanged += OnScoreChanged;
-        syncWave.onChanged  += OnWaveChanged;
-
         UpdateScoreText();
-    }
-
-    protected override void OnDespawned(bool asServer)
-    {
-        base.OnDespawned(asServer);
-        syncScore.onChanged -= OnScoreChanged;
-        syncWave.onChanged  -= OnWaveChanged;
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
@@ -165,13 +154,42 @@ public class GameManager : NetworkBehaviour
 
     public static void UpdateCoin() => CountCoin++;
 
-    public static void AddScore(int amount = 1) => Score += amount;
+    /// <summary>
+    /// Cộng điểm cho tất cả người chơi (gọi từ Server khi quái chết).
+    /// </summary>
+    public static void AddScore(int amount = 1)
+    {
+        if (instance == null) return;
 
+        if (instance.isSpawned && instance.isServer)
+        {
+            // Server: phát sóng cho tất cả client cùng cộng điểm
+            instance.RpcAddScore(amount);
+        }
+        else if (!instance.isSpawned)
+        {
+            // Offline mode
+            Score += amount;
+        }
+    }
+
+    /// <summary>
+    /// Tăng Wave cho tất cả người chơi (gọi từ Server khi hết đợt quái).
+    /// </summary>
     public static void AdvanceWave()
     {
         if (instance == null) return;
-        if (instance.isSpawned && !instance.isServer) return;
-        instance.syncWave.value = Mathf.Max(DefaultWave, instance.syncWave.value + 1);
+
+        if (instance.isSpawned && instance.isServer)
+        {
+            // Server: phát sóng cho tất cả client cùng tăng wave
+            instance.RpcAdvanceWave();
+        }
+        else if (!instance.isSpawned)
+        {
+            // Offline mode
+            Wave++;
+        }
     }
 
     public static void ResetRunState()
@@ -180,16 +198,8 @@ public class GameManager : NetworkBehaviour
         BonusDamage = DefaultBonusDamage;
         BonusMaxHP  = DefaultBonusMaxHP;
         CountCoin   = DefaultCoinCount;
-
-        // Score và Wave reset qua instance (server)
-        if (instance != null)
-        {
-            if (!instance.isSpawned || instance.isServer)
-            {
-                instance.syncScore.value = DefaultScore;
-                instance.syncWave.value  = DefaultWave;
-            }
-        }
+        Score       = DefaultScore;
+        Wave        = DefaultWave;
     }
 
     // ─────────────────── PAUSE ───────────────────────────────
@@ -213,10 +223,21 @@ public class GameManager : NetworkBehaviour
 
     // ─────────────────── SHOP UPGRADES ───────────────────────
 
+    private Player GetLocalPlayer()
+    {
+        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        foreach (var p in players)
+        {
+            // Trả về nếu là Owner (Multiplayer) hoặc nếu game offline (!isSpawned)
+            if (!p.isSpawned || p.isOwner) return p;
+        }
+        return null;
+    }
+
     public void UpgradeSpeed(float amount)
     {
         BonusSpeed += amount;
-        Player player = FindAnyObjectByType<Player>();
+        Player player = GetLocalPlayer();
         if (player != null) player.AddSpeed(amount);
     }
 
@@ -225,7 +246,7 @@ public class GameManager : NetworkBehaviour
     public void UpgradeMaxHP(float amount)
     {
         BonusMaxHP += amount;
-        Player player = FindAnyObjectByType<Player>();
+        Player player = GetLocalPlayer();
         if (player != null) player.AddMaxHP(amount);
     }
 
@@ -267,10 +288,19 @@ public class GameManager : NetworkBehaviour
         CountCoin += amount;
     }
 
-    // ─────────────────── UI CALLBACKS ────────────────────────
+    [ObserversRpc(runLocally: true)]
+    private void RpcAddScore(int amount)
+    {
+        Score += amount;
+    }
 
-    private void OnScoreChanged(int newScore) => UpdateScoreText();
-    private void OnWaveChanged(int newWave)   => UpdateScoreText();
+    [ObserversRpc(runLocally: true)]
+    private void RpcAdvanceWave()
+    {
+        Wave++;
+    }
+
+    // ─────────────────── UI CALLBACKS ────────────────────────
 
     private void UpdateCoinText()
     {
@@ -281,6 +311,6 @@ public class GameManager : NetworkBehaviour
     private void UpdateScoreText()
     {
         if (txtScore != null)
-            txtScore.text = (isSpawned ? syncScore.value : 0).ToString();
+            txtScore.text = score.ToString();
     }
 }

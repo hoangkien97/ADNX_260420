@@ -33,6 +33,7 @@ public class InfinityMap : MonoBehaviour
     private Dictionary<Vector2Int, GameObject> activeTiles = new();
     private Dictionary<int, Queue<GameObject>> pools = new();
     private Vector2Int lastAnchor = new(int.MaxValue, int.MaxValue);
+    private HashSet<Vector2Int> lastAnchors = new HashSet<Vector2Int>();
     private bool graphScanned = false;   // true sau khi A* Scan() hoàn thành
 
     private static readonly Vector2Int[] OFFSETS =
@@ -70,6 +71,7 @@ public class InfinityMap : MonoBehaviour
         if (target != null)
         {
             lastAnchor = WorldToAnchor(target.position);
+            lastAnchors.Add(lastAnchor);
             Refresh();
         }
 
@@ -81,17 +83,52 @@ public class InfinityMap : MonoBehaviour
 
     void Update()
     {
-        if (target == null)
+        if (target == null && Camera.main != null)
+            target = Camera.main.transform;
+
+        HashSet<Vector2Int> currentAnchors = new HashSet<Vector2Int>();
+
+        // 1. Luôn spawn map quanh Local Camera
+        if (target != null)
         {
-            if (Camera.main != null)
-                target = Camera.main.transform;
-            else
-                return;
+            lastAnchor = WorldToAnchor(target.position); // Giữ lại cho Gizmos
+            currentAnchors.Add(lastAnchor);
         }
 
-        Vector2Int anchor = WorldToAnchor(target.position);
-        if (anchor == lastAnchor) return;
-        lastAnchor = anchor;
+        // 2. Nếu là Server, spawn map quanh TẤT CẢ các Player khác (để phục vụ AI)
+        if (PurrNet.NetworkManager.main != null && PurrNet.NetworkManager.main.isServer)
+        {
+            Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+            foreach (Player p in players)
+            {
+                if (p != null && p.gameObject.activeInHierarchy)
+                {
+                    currentAnchors.Add(WorldToAnchor(p.transform.position));
+                }
+            }
+        }
+
+        // Kiểm tra xem danh sách anchors có thay đổi so với frame trước không
+        bool changed = false;
+        if (currentAnchors.Count != lastAnchors.Count)
+        {
+            changed = true;
+        }
+        else
+        {
+            foreach (var a in currentAnchors)
+            {
+                if (!lastAnchors.Contains(a))
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (!changed) return;
+
+        lastAnchors = currentAnchors;
         Refresh();
     }
 
@@ -175,7 +212,12 @@ public class InfinityMap : MonoBehaviour
     // =======================================================
     void Refresh()
     {
-        var needed = GetSurrounding4(lastAnchor);
+        var needed = new HashSet<Vector2Int>();
+        foreach (var anchor in lastAnchors)
+        {
+            var sur = GetSurrounding4(anchor);
+            foreach (var cell in sur) needed.Add(cell);
+        }
 
         // Thu hồi tile không dùng
         var toRemove = new List<Vector2Int>();
@@ -345,19 +387,12 @@ public class InfinityMap : MonoBehaviour
         astar.Scan();
         graphScanned = true;   // ← đánh dấu graph đã sẵn sàng
 
-        ProceduralGridMover mover = astar.GetComponent<ProceduralGridMover>();
-        if (mover == null)
+        // Thay vì dùng ProceduralGridMover đơn lẻ, ta gắn MultiplayerGridManager
+        // để nó tự động quản lý nhiều GridGraph cho nhiều Player.
+        MultiplayerGridManager multiMng = astar.GetComponent<MultiplayerGridManager>();
+        if (multiMng == null)
         {
-            mover = astar.gameObject.AddComponent<ProceduralGridMover>();
-        }
-
-        mover.graph = graph;
-        mover.target = target;
-        mover.updateDistance = Mathf.Max(1f, graphFollowDistanceInNodes);
-        mover.enabled = mover.target != null;
-        if (mover.enabled)
-        {
-            mover.UpdateGraph();
+            astar.gameObject.AddComponent<MultiplayerGridManager>();
         }
     }
 

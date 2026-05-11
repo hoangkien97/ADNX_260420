@@ -16,4 +16,4 @@ MonoBehaviour:
   description: Increase the character's speed.
   baseCost: 5
   itemType: 0
-  effectValue: 2
+  effectValue: 10

@@ -1420,7 +1420,7 @@ MonoBehaviour:
   manualDebugFloorRoof: 0
   showSearchTree: 0
   unwalkableNodeDebugSize: 0.3
-  logPathResults: 1
+  logPathResults: 0
   maxNearestNodeDistance: 100
   scanOnStartup: 0
   fullGetNearestSearch: 0
@@ -2806,14 +2806,6 @@ MonoBehaviour:
   _directChildren: []
   txtCoin: {fileID: 895394753}
   txtScore: {fileID: 430447076}
-  syncScore:
-    _value: 0
-    _ownerAuth: 0
-    _sendIntervalInSeconds: 0
-  syncWave:
-    _value: 1
-    _ownerAuth: 0
-    _sendIntervalInSeconds: 0
   pausePanel: {fileID: 343205616}
   shopPanel: {fileID: 1449621849}
   musicSlider: {fileID: 1039979669}
@@ -4362,7 +4354,7 @@ MonoBehaviour:
   - {fileID: 8363658447288777243, guid: 3bbe1c35674069544b1281ed6f92c04a, type: 3}
   - {fileID: 8578261700073108234, guid: 8f5d7255713e48144942d6addb2149e5, type: 3}
   timeBetweenSpawns: 1
-  poolSize: 5
+  maxEnemiesInWave: 10
   numberScale: 1.3
   shopPanel: {fileID: 1449621849}
   bonusCoin: 5

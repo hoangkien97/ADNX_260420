@@ -15,7 +15,7 @@ public class Player : NetworkBehaviour
     [SerializeField] private float speed = 5f;
     private Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
-    private Animator animator;
+    private NetworkAnimator networkAnimator;
     [SerializeField] private float maxHp = 100f;
     [SerializeField] private Image hpBar;
     private GameManager gameManager;
@@ -79,13 +79,40 @@ public class Player : NetworkBehaviour
         playerName.onChanged -= OnPlayerNameChanged;
     }
 
+    // ─────────────────── SCORE (PER-PLAYER) ─────────────────
+
+    /// <summary>
+    /// Server gọi hàm này khi quái bị người chơi này giết.
+    /// Chỉ Owner (người chơi sở hữu nhân vật này) mới cộng điểm.
+    /// </summary>
+    public void AddKillScore(int amount = 1)
+    {
+        if (isSpawned)
+        {
+            RpcGrantKillScore(amount);
+        }
+        else
+        {
+            // Offline mode
+            GameManager.Score += amount;
+        }
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcGrantKillScore(int amount)
+    {
+        // Chỉ Owner của nhân vật này mới được cộng điểm
+        if (!isOwner) return;
+        GameManager.Score += amount;
+    }
+
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        animator = GetComponent<Animator>();
+        networkAnimator = GetComponent<NetworkAnimator>();
     }
 
     private void Start()
@@ -163,7 +190,8 @@ public class Player : NetworkBehaviour
         if (input.x < 0)       spriteRenderer.flipX = true;
         else if (input.x > 0)  spriteRenderer.flipX = false;
 
-        animator.SetBool("isRun", input != Vector2.zero);
+        if (networkAnimator != null)
+            networkAnimator.SetBool("isRun", input != Vector2.zero);
     }
 
     // ─────────────────── HEALTH ──────────────────────────────
