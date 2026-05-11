@@ -79,8 +79,18 @@ public class ShopManager : MonoBehaviour
 
     public void ContinueGame()
     {
-        Time.timeScale = 1f;
-        gameObject.SetActive(false);
+        // Chỉ cho phép Host (Server) bấm nút này để đóng Shop cho toàn mạng lưới
+        if (GameManager.Instance != null)
+        {
+            if (!GameManager.Instance.isServer) return;
+            GameManager.Instance.CloseShopForAll();
+        }
+        else
+        {
+            // Fallback offline
+            Time.timeScale = 1f;
+            gameObject.SetActive(false);
+        }
     }
 
     private void ApplyEffect(ShopItemSO item)
@@ -104,14 +114,21 @@ public class ShopManager : MonoBehaviour
 
     private void RefreshPlayerStatTexts()
     {
-        if (player == null)
+        // Luôn tìm lại local player vì nếu chơi lại hoặc có người mới vào, reference có thể sai
+        player = null;
+        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        foreach (var p in players)
         {
-            player = FindAnyObjectByType<Player>();
+            if (!p.isSpawned || p.isOwner) 
+            {
+                player = p;
+                break;
+            }
         }
 
-        if (gun == null)
+        if (player != null)
         {
-            gun = FindAnyObjectByType<Gun>();
+            gun = player.GetComponentInChildren<Gun>();
         }
 
         if (statHP != null)

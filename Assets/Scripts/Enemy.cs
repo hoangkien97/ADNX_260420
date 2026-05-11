@@ -18,6 +18,8 @@ public class Enemy : NetworkBehaviour
     private float enemyMoveSpeed;
     private float pathUpdateInterval = 0.3f;
     private float waypointReachDistance = 0.15f;
+    private float retargetInterval = 1f;     // Tần suất tìm lại player gần nhất (giây)
+    private float nextRetargetTime = 0f;
 
     protected Player targetPlayer;
     protected float maxHp;
@@ -28,6 +30,9 @@ public class Enemy : NetworkBehaviour
 
     // SyncVar HP: Server ghi, tất cả clients đọc
     [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
+
+    // Đồng bộ hệ số sức mạnh (Multiplier) cho Client để thanh HP và tốc độ chạy đúng
+    [SerializeField] private SyncVar<float> syncMultiplier = new SyncVar<float>(1f, ownerAuth: false);
 
     private void ApplyDataSO()
     {
@@ -60,10 +65,16 @@ public class Enemy : NetworkBehaviour
     {
         base.OnSpawned(asServer);
         currentHp.onChanged += OnHpChanged;
+        syncMultiplier.onChanged += OnMultiplierChanged;
 
         if (asServer)
         {
             currentHp.value = maxHp;
+        }
+        else
+        {
+            // Client vừa vào game, áp dụng ngay multiplier từ Server
+            ApplyStatMultiplierLocal(syncMultiplier.value);
         }
 
         UpdateHpBar();
@@ -73,6 +84,7 @@ public class Enemy : NetworkBehaviour
     {
         base.OnDespawned(asServer);
         currentHp.onChanged -= OnHpChanged;
+        syncMultiplier.onChanged -= OnMultiplierChanged;
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
@@ -116,6 +128,25 @@ public class Enemy : NetworkBehaviour
     }
 
     public void ApplyStatMultiplier(float multiplier)
+    {
+        // Server lưu biến đồng bộ, Client sẽ tự động nhận qua event OnMultiplierChanged
+        if (isSpawned && isServer)
+        {
+            syncMultiplier.value = multiplier;
+        }
+        
+        ApplyStatMultiplierLocal(multiplier);
+    }
+
+    private void OnMultiplierChanged(float newMultiplier)
+    {
+        if (!isServer)
+        {
+            ApplyStatMultiplierLocal(newMultiplier);
+        }
+    }
+
+    private void ApplyStatMultiplierLocal(float multiplier)
     {
         if (!statsInitialized)
         {
@@ -197,9 +228,22 @@ public class Enemy : NetworkBehaviour
     {
         if (AstarPath.active == null) return;
 
-        // Cập nhật target player gần nhất theo thời gian
+        // Cập nhật target player: tìm lại nếu đang null/chết, hoặc theo chu kỳ retargetInterval
         if (targetPlayer == null || targetPlayer.IsDead)
+        {
             targetPlayer = FindNearestPlayer();
+            nextRetargetTime = Time.time + retargetInterval;
+        }
+        else if (Time.time >= nextRetargetTime)
+        {
+            // Tìm lại player gần nhất – nếu có player khác gần hơn thì đổi mục tiêu
+            Player nearest = FindNearestPlayer();
+            if (nearest != null && nearest != targetPlayer)
+            {
+                targetPlayer = nearest;
+            }
+            nextRetargetTime = Time.time + retargetInterval;
+        }
 
         if (targetPlayer == null) return;
         if (Time.time < nextPathRequestTime) return;
@@ -213,7 +257,15 @@ public class Enemy : NetworkBehaviour
         if (!seeker.IsDone()) return;
 
         nextPathRequestTime = Time.time + pathUpdateInterval;
-        seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete);
+        
+        // --- XỬ LÝ LƯỚI ĐA MỤC TIÊU ---
+        // Lấy đúng lưới A* đang bao quanh Player mục tiêu
+        int graphMask = MultiplayerGridManager.GetGraphMaskForPlayer(targetPlayer);
+        
+        if (graphMask != -1)
+            seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete, graphMask);
+        else
+            seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete);
     }
 
     private void OnPathComplete(Path path)
@@ -224,6 +276,24 @@ public class Enemy : NetworkBehaviour
             currentPath = null;
             return;
         }
+
+        // --- XỬ LÝ LỖI INFINITY MAP ---
+        // Lấy điểm cuối cùng mà lưới A* vẽ ra được
+        if (targetPlayer != null)
+        {
+            Vector3 pathEndPos = path.vectorPath[path.vectorPath.Count - 1];
+            float distanceToRealTarget = Vector2.Distance(pathEndPos, targetPlayer.transform.position);
+            
+            // Nếu mép lưới cách quá xa Player thật (> 2 đơn vị),
+            // chứng tỏ Player đã ra khỏi vùng phủ sóng của A*.
+            // Ta hủy đường đi này để AI dùng phương án Fallback (bay thẳng)
+            if (distanceToRealTarget > 2f)
+            {
+                currentPath = null;
+                return;
+            }
+        }
+        // ------------------------------
 
         currentPath = path;
         currentWaypoint = 0;
@@ -302,10 +372,15 @@ public class Enemy : NetworkBehaviour
 
     // ─────────────────── DAMAGE & DEATH ──────────────────────
 
-    public virtual void TakeDamage(float damage)
+    // Người cuối cùng gây sát thương (dùng để cộng điểm đúng người)
+    private Player lastKiller;
+
+    public virtual void TakeDamage(float damage, Player attacker = null)
     {
         // Chỉ Server xử lý
         if (isSpawned && !isServer) return;
+
+        if (attacker != null) lastKiller = attacker;
 
         float newHp = Mathf.Clamp(currentHp.value - damage, 0f, maxHp);
         currentHp.value = newHp;
@@ -316,7 +391,12 @@ public class Enemy : NetworkBehaviour
 
     protected virtual void Die()
     {
-        GameManager.AddScore();
+        // Cộng điểm CHỈ cho người bắn chết quái này
+        if (lastKiller != null)
+            lastKiller.AddKillScore();
+        else
+            GameManager.AddScore(); // Fallback (quái chết bởi nguyên nhân khác)
+
         if (isServer || !isSpawned)
             SpawnLoot(transform.position);
 

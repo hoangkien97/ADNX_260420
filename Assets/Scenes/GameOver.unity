@@ -763,6 +763,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameOverManager
   rankingManager: {fileID: 48293057}
+  restartButtonObj: {fileID: 1968399425}
 --- !u!4 &892272902
 Transform:
   m_ObjectHideFlags: 0

@@ -69,7 +69,7 @@ public class SpectateManager : MonoBehaviour
     private void RefreshAlivePlayers()
     {
         _alivePlayers.Clear();
-        Player[] allPlayers = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        Player[] allPlayers = FindObjectsOfType<Player>();
         foreach (Player p in allPlayers)
         {
             if (p != _deadPlayer && !p.IsDead && p.gameObject.activeInHierarchy)
@@ -107,12 +107,35 @@ public class SpectateManager : MonoBehaviour
 
         Player target = _alivePlayers[_currentSpectateIndex];
 
-        // Di chuyển camera chính theo target
-        Camera cam = spectateCamera != null ? spectateCamera : Camera.main;
-        if (cam != null && target != null)
+        // 1. Thử hỗ trợ Cinemachine trước
+        bool cinemachineUpdated = false;
+        Component[] allComponents = FindObjectsOfType<Component>(true);
+        foreach (var comp in allComponents)
         {
-            Vector3 targetPos = target.transform.position;
-            cam.transform.position = new Vector3(targetPos.x, targetPos.y, cam.transform.position.z);
+            string compName = comp.GetType().Name;
+            if (compName == "CinemachineVirtualCamera" || compName == "CinemachineCamera")
+            {
+                var followProp = comp.GetType().GetProperty("Follow");
+                if (followProp != null) 
+                {
+                    followProp.SetValue(comp, target.transform);
+                    cinemachineUpdated = true;
+                }
+                
+                var lookAtProp = comp.GetType().GetProperty("LookAt");
+                if (lookAtProp != null) lookAtProp.SetValue(comp, target.transform);
+            }
+        }
+
+        // 2. Fallback camera thường nếu không có Cinemachine
+        if (!cinemachineUpdated)
+        {
+            Camera cam = spectateCamera != null ? spectateCamera : Camera.main;
+            if (cam != null && target != null)
+            {
+                Vector3 targetPos = target.transform.position;
+                cam.transform.position = new Vector3(targetPos.x, targetPos.y, cam.transform.position.z);
+            }
         }
     }
 
@@ -125,9 +148,6 @@ public class SpectateManager : MonoBehaviour
             spectateNameText.text = $"Đang xem: {target.PlayerDisplayName}";
     }
 
-    /// <summary>
-    /// Được gọi khi tất cả players đều đã chết.
-    /// </summary>
     public void TriggerGameOver()
     {
         _isSpectating = false;
@@ -136,6 +156,15 @@ public class SpectateManager : MonoBehaviour
             spectatePanel.SetActive(false);
 
         Time.timeScale = 1f;
-        SceneManager.LoadScene("GameOver");
+        
+        if (PurrNet.NetworkManager.main != null)
+        {
+            if (PurrNet.NetworkManager.main.isServer)
+                PurrNet.NetworkManager.main.sceneModule.LoadSceneAsync("GameOver", UnityEngine.SceneManagement.LoadSceneMode.Single);
+        }
+        else
+        {
+            SceneManager.LoadScene("GameOver");
+        }
     }
 }

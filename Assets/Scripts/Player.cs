@@ -15,7 +15,7 @@ public class Player : NetworkBehaviour
     [SerializeField] private float speed = 5f;
     private Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
-    private Animator animator;
+    private NetworkAnimator networkAnimator;
     [SerializeField] private float maxHp = 100f;
     [SerializeField] private Image hpBar;
     private GameManager gameManager;
@@ -27,6 +27,8 @@ public class Player : NetworkBehaviour
     [SerializeField] private SyncVar<string> playerName = new SyncVar<string>("", ownerAuth: true);
 
     private bool _isDead;
+    private float baseSpeed;
+    private float baseMaxHp;
 
     public float MaxHp => maxHp;
     public float MoveSpeed => speed;
@@ -39,16 +41,21 @@ public class Player : NetworkBehaviour
     {
         base.OnSpawned(asServer);
 
-        // Subscribe SyncVar callback để update HP bar khi nhận giá trị mới
-        currentHp.onChanged += OnHpChanged;
-        playerName.onChanged += OnPlayerNameChanged;
+        if (isOwner)
+        {
+            // Yêu cầu Server khôi phục toàn bộ trạng thái (HP, hình dáng, vũ khí)
+            CmdRequestResetState();
+        }
 
         if (asServer)
         {
-            // Server: khởi tạo HP với bonus
-            maxHp += GameManager.BonusMaxHP;
-            currentHp.value = maxHp;
+            // Server: Theo dõi sự kiện player thoát – tự động ẩn player ngay lập tức khi owner disconnect
+            networkManager.onPlayerLeft += OnOwnerLeft;
         }
+
+        // Subscribe SyncVar callback để update HP bar khi nhận giá trị mới
+        currentHp.onChanged += OnHpChanged;
+        playerName.onChanged += OnPlayerNameChanged;
 
         if (isOwner)
         {
@@ -57,8 +64,8 @@ public class Player : NetworkBehaviour
             
             playerName.value = name;
 
-            // Owner: áp bonus speed
-            speed += GameManager.BonusSpeed;
+            // Owner: áp bonus speed (tránh cộng dồn khi tái sử dụng Object Pool)
+            speed = baseSpeed + GameManager.BonusSpeed;
             
             // Tìm và gắn Cinemachine vào player này
             AssignCinemachineCamera();
@@ -68,7 +75,6 @@ public class Player : NetworkBehaviour
         UpdateHpBar();
         
         // Khởi tạo UI hiển thị tên bằng giá trị hiện tại của SyncVar
-        // (Rất quan trọng cho client join sau, hoặc chủ phòng tự cập nhật UI)
         OnPlayerNameChanged(playerName.value);
     }
 
@@ -77,6 +83,48 @@ public class Player : NetworkBehaviour
         base.OnDespawned(asServer);
         currentHp.onChanged -= OnHpChanged;
         playerName.onChanged -= OnPlayerNameChanged;
+
+        if (asServer)
+        {
+            networkManager.onPlayerLeft -= OnOwnerLeft;
+        }
+    }
+
+    private void OnOwnerLeft(PlayerID leftPlayer, bool asServer)
+    {
+        // Chỉ chạy trên Server và chỉ khi đúng player của object này thoát
+        if (!asServer) return;
+        if (!owner.HasValue || owner.Value != leftPlayer) return;
+
+        // Ẩn player ngay lập tức mà không cần chờ RPC
+        RpcHideForLeaving();
+    }
+
+    // ─────────────────── SCORE (PER-PLAYER) ─────────────────
+
+    /// <summary>
+    /// Server gọi hàm này khi quái bị người chơi này giết.
+    /// Chỉ Owner (người chơi sở hữu nhân vật này) mới cộng điểm.
+    /// </summary>
+    public void AddKillScore(int amount = 1)
+    {
+        if (isSpawned)
+        {
+            RpcGrantKillScore(amount);
+        }
+        else
+        {
+            // Offline mode
+            GameManager.Score += amount;
+        }
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcGrantKillScore(int amount)
+    {
+        // Chỉ Owner của nhân vật này mới được cộng điểm
+        if (!isOwner) return;
+        GameManager.Score += amount;
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
@@ -85,7 +133,10 @@ public class Player : NetworkBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        animator = GetComponent<Animator>();
+        networkAnimator = GetComponent<NetworkAnimator>();
+
+        baseSpeed = speed;
+        baseMaxHp = maxHp;
     }
 
     private void Start()
@@ -93,8 +144,8 @@ public class Player : NetworkBehaviour
         // Fallback: chạy khi không có network (single-player / offline mode)
         if (!isSpawned)
         {
-            speed += GameManager.BonusSpeed;
-            maxHp += GameManager.BonusMaxHP;
+            speed = baseSpeed + GameManager.BonusSpeed;
+            maxHp = baseMaxHp + GameManager.BonusMaxHP;
             currentHp.value = maxHp;
             gameManager = FindAnyObjectByType<GameManager>();
             UpdateHpBar();
@@ -103,19 +154,23 @@ public class Player : NetworkBehaviour
 
     private void Update()
     {
-        // Chỉ local player (IsOwner) mới xử lý input
-        if (isSpawned && !isOwner) return;
-
-        if (Time.timeScale == 0f) return; // Không di chuyển khi pause
-
-        MovePlayer();
-
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Vẫn cho phép bấm ESC để Pause dù đã chết (để có thể Quit)
+        if (isOwner && Input.GetKeyDown(KeyCode.Escape))
         {
             if (gameManager == null)
                 gameManager = FindAnyObjectByType<GameManager>();
             gameManager?.TogglePause();
         }
+
+        // Ngưng mọi tương tác di chuyển nếu đã chết
+        if (_isDead) return;
+
+        // Chỉ local player (IsOwner) đang sống mới xử lý input
+        if (isSpawned && !isOwner) return;
+
+        if (Time.timeScale == 0f) return; // Không di chuyển khi pause
+
+        MovePlayer();
     }
 
     private void AssignCinemachineCamera()
@@ -163,7 +218,8 @@ public class Player : NetworkBehaviour
         if (input.x < 0)       spriteRenderer.flipX = true;
         else if (input.x > 0)  spriteRenderer.flipX = false;
 
-        animator.SetBool("isRun", input != Vector2.zero);
+        if (networkAnimator != null)
+            networkAnimator.SetBool("isRun", input != Vector2.zero);
     }
 
     // ─────────────────── HEALTH ──────────────────────────────
@@ -186,6 +242,85 @@ public class Player : NetworkBehaviour
         }
     }
 
+    // ─────────────────── RESPAWN / RECONNECT ─────────────────
+
+    [ServerRpc(requireOwnership: true)]
+    private void CmdRequestResetState()
+    {
+        _isDead = false;
+        maxHp = baseMaxHp + GameManager.BonusMaxHP;
+        currentHp.value = maxHp;
+        
+        RpcResetVisuals();
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcResetVisuals()
+    {
+        _isDead = false;
+        if (rb != null) rb.linearVelocity = Vector2.zero;
+
+        SpriteRenderer[] sprites = GetComponentsInChildren<SpriteRenderer>(true);
+        foreach (var s in sprites) s.enabled = true;
+
+        var cols = GetComponents<Collider2D>();
+        foreach (var c in cols) c.enabled = true;
+
+        if (hpBar != null && hpBar.transform.parent != null)
+            hpBar.transform.parent.gameObject.SetActive(true);
+
+        Gun gun = GetComponentInChildren<Gun>(true);
+        if (gun != null) gun.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Gọi trước khi Client thoát – bảo Server despawn player này sạch sẽ.
+    /// </summary>
+    [ServerRpc(requireOwnership: true)]
+    public void CmdNotifyLeaving()
+    {
+        // Broadcast ẩn player trên tất cả client (bao gồm server)
+        // Không dùng Destroy() vì PurrNet Object Pooling sẽ chặn lại
+        RpcHideForLeaving();
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcHideForLeaving()
+    {
+        _isDead = true;
+        if (rb != null) rb.linearVelocity = Vector2.zero;
+
+        // Ẩn toàn bộ hình ảnh
+        SpriteRenderer[] sprites = GetComponentsInChildren<SpriteRenderer>(true);
+        foreach (var s in sprites) s.enabled = false;
+
+        // Tắt va chạm
+        var cols = GetComponents<Collider2D>();
+        foreach (var c in cols) c.enabled = false;
+
+        // Ẩn thanh máu
+        if (hpBar != null && hpBar.transform.parent != null)
+            hpBar.transform.parent.gameObject.SetActive(false);
+
+        // Ẩn súng
+        Gun gun = GetComponentInChildren<Gun>(true);
+        if (gun != null) gun.gameObject.SetActive(false);
+    }
+
+    public static void NotifyAllPlayersLeaving()
+    {
+        Player[] players = FindObjectsOfType<Player>();
+        foreach (Player p in players)
+        {
+            if (p != null && p.isSpawned && p.isOwner)
+            {
+                p.CmdNotifyLeaving();
+            }
+        }
+    }
+
+    // ─────────────────── DEATH ───────────────────────────────
+
     /// <summary>
     /// Broadcast tới tất cả clients: player này đã chết → spectate hoặc GameOver.
     /// </summary>
@@ -193,21 +328,41 @@ public class Player : NetworkBehaviour
     private void RpcDie()
     {
         _isDead = true;
-        gameObject.SetActive(false);
+
+        if (rb != null) rb.linearVelocity = Vector2.zero; // Ngừng trôi
+        
+        // Ẩn hình ảnh và tắt va chạm thay vì tắt cả GameObject để Update() vẫn chạy bắt phím Pause
+        if (spriteRenderer != null) spriteRenderer.enabled = false;
+        var cols = GetComponents<Collider2D>();
+        foreach (var c in cols) c.enabled = false;
+        if (hpBar != null && hpBar.transform.parent != null)
+            hpBar.transform.parent.gameObject.SetActive(false);
+
+        // Ẩn luôn súng
+        Gun gun = GetComponentInChildren<Gun>();
+        if (gun != null) gun.gameObject.SetActive(false);
 
         // Chỉ local player mới cần chuyển sang spectate / GameOver
         if (isSpawned && !isOwner) return;
 
-        SpectateManager spectateManager = FindAnyObjectByType<SpectateManager>();
+        SpectateManager spectateManager = FindObjectOfType<SpectateManager>(true);
         if (spectateManager != null)
         {
             spectateManager.StartSpectating(this);
         }
         else
         {
-            // Fallback single-player: load GameOver thẳng
+            // Thay vì LoadScene trực tiếp, ủy quyền cho Server
             Time.timeScale = 1f;
-            SceneManager.LoadScene("GameOver");
+            if (PurrNet.NetworkManager.main != null)
+            {
+                if (PurrNet.NetworkManager.main.isServer)
+                    PurrNet.NetworkManager.main.sceneModule.LoadSceneAsync("GameOver", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            }
+            else
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("GameOver");
+            }
         }
     }
 

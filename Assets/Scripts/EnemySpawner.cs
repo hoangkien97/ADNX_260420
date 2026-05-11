@@ -21,6 +21,7 @@ public class EnemySpawner : MonoBehaviour
     private int deadEnemiesCount = 0;
     private int enemiesSpawnedThisWave = 0;
     private float currentStatMultiplier = 1f;
+    private bool isWaveCompleting = false;
 
     void Start()
     {
@@ -127,22 +128,41 @@ public class EnemySpawner : MonoBehaviour
     public void OnEnemyDied()
     {
         deadEnemiesCount++;
-        if (deadEnemiesCount >= maxEnemiesInWave)
+        // Thêm cờ isWaveCompleting để chặn lỗi gọi hàm mở Shop nhiều lần
+        if (deadEnemiesCount >= maxEnemiesInWave && !isWaveCompleting)
+        {
+            isWaveCompleting = true;
             StartCoroutine(WaveCompletedRoutine());
+        }
     }
 
     private IEnumerator WaveCompletedRoutine()
     {
-        GameManager.CountCoin += bonusCoin;
+        if (GameManager.Instance != null)
+            GameManager.Instance.GrantBonusCoinForAll(bonusCoin);
+        else
+            GameManager.CountCoin += bonusCoin;
+            
         yield return new WaitForSeconds(3f);
 
-        if (shopPanel != null) shopPanel.SetActive(true);
-        Time.timeScale = 0f;
+        // Chuyển quyền mở Shop qua GameManager để nó phát sóng (Rpc) cho toàn bộ Client
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OpenShopForAll();
+        }
+        else
+        {
+            // Fallback offline
+            if (shopPanel != null) shopPanel.SetActive(true);
+            Time.timeScale = 0f;
+        }
 
         maxEnemiesInWave = Mathf.RoundToInt(maxEnemiesInWave * numberScale);
         currentStatMultiplier *= numberScale;
         deadEnemiesCount       = 0;
         enemiesSpawnedThisWave = 0;
         GameManager.AdvanceWave();
+        
+        isWaveCompleting = false;
     }
 }
