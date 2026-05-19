@@ -53,23 +53,7 @@ public class GameOverManager : MonoBehaviour
     {
         GameManager.ResetRunState();
         Time.timeScale = 1f;
-
-        if (PurrNet.NetworkManager.main != null)
-        {
-            if (PurrNet.NetworkManager.main.isServer)
-            {
-                // Thay vì RestartAsHost làm đứt kết nối Client, chỉ cần load lại scene qua mạng!
-                PurrNet.NetworkManager.main.sceneModule.LoadSceneAsync("SampleScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
-            }
-            else
-            {
-                // Client không thể Restart server, thoát về menu
-                GoMainMenu();
-            }
-        }
-        else
-        {
-            SceneManager.LoadScene("SampleScene");
-        }
+        GoMainMenu();
     }
+
 }

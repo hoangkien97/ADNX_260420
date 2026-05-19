@@ -50,7 +50,6 @@ public class PlayerBullet : NetworkBehaviour
         // Fallback offline: destroy thẳng sau timeDestroy
         if (!isSpawned)
         {
-            damage += GameManager.BonusDamage;
             Destroy(gameObject, timeDestroy);
         }
     }

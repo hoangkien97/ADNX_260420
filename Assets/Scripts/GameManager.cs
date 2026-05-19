@@ -6,19 +6,19 @@ using PurrNet;
 /// <summary>
 /// GameManager với PurrNet multiplayer support.
 /// - Score: local per-player (mỗi người có điểm riêng)
-/// - Wave: local per-player (mỗi người có wave riêng để lưu)
+/// - Wave: Global (đồng bộ chung cho toàn bộ phòng)
 /// - CountCoin: local per-player (shop riêng từng người)
 /// - BonusSpeed, BonusDamage, BonusMaxHP: vẫn static vì per-player (shop riêng)
-/// - Pause: chỉ dừng local client, không sync
+/// - Pause: Server-authoritative – chỉ Server mới được pause, broadcast tới tất cả Client
 /// </summary>
 public class GameManager : NetworkBehaviour
 {
-    public const float DefaultBonusSpeed  = 0f;
+    public const float DefaultBonusSpeed = 0f;
     public const float DefaultBonusDamage = 0f;
-    public const float DefaultBonusMaxHP  = 0f;
-    public const int   DefaultCoinCount   = 0;
-    public const int   DefaultScore       = 0;
-    public const int   DefaultWave        = 1;
+    public const float DefaultBonusMaxHP = 0f;
+    public const int DefaultCoinCount = 0;
+    public const int DefaultScore = 0;
+    public const int DefaultWave = 1;
 
     [SerializeField] private Text txtCoin;
     [SerializeField] private Text txtScore;
@@ -29,21 +29,29 @@ public class GameManager : NetworkBehaviour
     // Score: local per-player (không sync, mỗi người có điểm riêng)
     private static int score = 0;
 
-    // Wave: local per-player (không sync, mỗi người có wave riêng để lưu)
+    // Wave: Global
+    // - Online: đồng bộ qua SyncVar để late-joiner nhận đúng giá trị hiện tại
+    // - Offline: dùng biến static local như cũ
     private static int wave = DefaultWave;
+    [SerializeField] private SyncVar<int> syncWave = new SyncVar<int>(DefaultWave, ownerAuth: false);
 
     [SerializeField] private GameObject pausePanel;
     private bool isPaused = false;
     [SerializeField] private GameObject shopPanel;
+    private bool isShopOpen = false;
+
+    // Pause/Shop: server ghi, tất cả client nhận (bao gồm late joiner)
+    [SerializeField] private SyncVar<bool> syncPaused   = new SyncVar<bool>(false, ownerAuth: false);
+    [SerializeField] private SyncVar<bool> syncShopOpen = new SyncVar<bool>(false, ownerAuth: false);
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Toggle sfxToggle;
     private static GameManager instance;
     public static GameManager Instance => instance;
 
     // Bonus stats: per-player static (shop riêng từng người)
-    public static float BonusSpeed  = DefaultBonusSpeed;
+    public static float BonusSpeed = DefaultBonusSpeed;
     public static float BonusDamage = DefaultBonusDamage;
-    public static float BonusMaxHP  = DefaultBonusMaxHP;
+    public static float BonusMaxHP = DefaultBonusMaxHP;
 
     // ─────────────────── COIN (LOCAL) ────────────────────────
 
@@ -52,9 +60,7 @@ public class GameManager : NetworkBehaviour
         get => countCoin;
         set
         {
-            countCoin = value;
-            PlayerPrefs.SetInt("countCoin", countCoin);
-            PlayerPrefs.Save();
+            countCoin = Mathf.Max(DefaultCoinCount, value);
             instance?.UpdateCoinText();
         }
     }
@@ -75,10 +81,35 @@ public class GameManager : NetworkBehaviour
 
     public static int Wave
     {
-        get => wave;
+        get
+        {
+            if (instance != null && instance.isSpawned)
+                return instance.syncWave.value;
+            return wave;
+        }
         private set
         {
-            wave = Mathf.Max(DefaultWave, value);
+            int clamped = Mathf.Max(DefaultWave, value);
+
+            if (instance != null && instance.isSpawned)
+            {
+                // Online mode: chỉ Server mới được phép ghi SyncVar ownerAuth:false
+                if (instance.isServer)
+                {
+                    if (instance.syncWave.value != clamped)
+                        instance.syncWave.value = clamped;
+                }
+                else
+                {
+                    // Client reset local state khi thoát room/menu, không đụng vào SyncVar
+                    wave = clamped;
+                }
+            }
+            else
+            {
+                wave = clamped;
+            }
+
             instance?.UpdateScoreText();
         }
     }
@@ -88,7 +119,31 @@ public class GameManager : NetworkBehaviour
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
+
+        syncWave.onChanged     += OnWaveChanged;
+        syncPaused.onChanged   += OnPausedChanged;
+        syncShopOpen.onChanged += OnShopOpenChanged;
+
+        // Server đảm bảo giá trị hợp lệ tối thiểu
+        if (asServer)
+            syncWave.value = Mathf.Max(DefaultWave, syncWave.value);
+
+        // Late joiner: áp dụng trạng thái hiện tại từ SyncVar
+        if (!asServer)
+        {
+            ApplyPause(syncPaused.value);
+            ApplyShop(syncShopOpen.value);
+        }
+
         UpdateScoreText();
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        base.OnDespawned(asServer);
+        syncWave.onChanged     -= OnWaveChanged;
+        syncPaused.onChanged   -= OnPausedChanged;
+        syncShopOpen.onChanged -= OnShopOpenChanged;
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────
@@ -110,12 +165,11 @@ public class GameManager : NetworkBehaviour
     {
         Time.timeScale = 1f;
         isPaused = false;
-        countCoin = PlayerPrefs.GetInt("countCoin", DefaultCoinCount);
         UpdateCoinText();
         UpdateScoreText();
 
         if (pausePanel != null) pausePanel.SetActive(false);
-        if (shopPanel  != null) shopPanel.SetActive(false);
+        if (shopPanel != null) shopPanel.SetActive(false);
 
         SetupAudioUI();
     }
@@ -139,9 +193,9 @@ public class GameManager : NetworkBehaviour
 
     private void Update()
     {
-        bool isShopOpen = shopPanel != null && shopPanel.activeInHierarchy;
-        if (!isPaused && !isShopOpen && Time.timeScale == 0f)
-            Time.timeScale = 1f;
+        //bool isShopOpen = shopPanel != null && shopPanel.activeInHierarchy;
+        //if (!isPaused && !isShopOpen && Time.timeScale == 0f)
+        //    Time.timeScale = 1f;
     }
 
     private void OnDestroy()
@@ -154,24 +208,6 @@ public class GameManager : NetworkBehaviour
 
     public static void UpdateCoin() => CountCoin++;
 
-    /// <summary>
-    /// Cộng điểm cho tất cả người chơi (gọi từ Server khi quái chết).
-    /// </summary>
-    public static void AddScore(int amount = 1)
-    {
-        if (instance == null) return;
-
-        if (instance.isSpawned && instance.isServer)
-        {
-            // Server: phát sóng cho tất cả client cùng cộng điểm
-            instance.RpcAddScore(amount);
-        }
-        else if (!instance.isSpawned)
-        {
-            // Offline mode
-            Score += amount;
-        }
-    }
 
     /// <summary>
     /// Tăng Wave cho tất cả người chơi (gọi từ Server khi hết đợt quái).
@@ -182,8 +218,9 @@ public class GameManager : NetworkBehaviour
 
         if (instance.isSpawned && instance.isServer)
         {
-            // Server: phát sóng cho tất cả client cùng tăng wave
-            instance.RpcAdvanceWave();
+            // Server tăng wave trong SyncVar, tất cả client (kể cả late joiner) sẽ nhận đúng state
+            instance.syncWave.value = Mathf.Max(DefaultWave, instance.syncWave.value + 1);
+            instance.UpdateScoreText();
         }
         else if (!instance.isSpawned)
         {
@@ -194,24 +231,64 @@ public class GameManager : NetworkBehaviour
 
     public static void ResetRunState()
     {
-        BonusSpeed  = DefaultBonusSpeed;
+        BonusSpeed = DefaultBonusSpeed;
         BonusDamage = DefaultBonusDamage;
-        BonusMaxHP  = DefaultBonusMaxHP;
-        CountCoin   = DefaultCoinCount;
-        Score       = DefaultScore;
-        Wave        = DefaultWave;
+        BonusMaxHP = DefaultBonusMaxHP;
+        CountCoin = DefaultCoinCount;
+        Score = DefaultScore;
+        Wave = DefaultWave;
     }
 
     // ─────────────────── PAUSE ───────────────────────────────
 
+    /// <summary>
+    /// Server-only: Broadcast pause tới tất cả Client qua RPC.
+    /// </summary>
     public void TogglePause()
     {
+        // Chỉ Server (Host) mới có quyền pause trong multiplayer
+        if (isSpawned && !isServer) return;
+
         if (!isPaused && Time.timeScale == 0f) return;
 
-        isPaused = !isPaused;
-        Time.timeScale = isPaused ? 0f : 1f;
+        bool newPaused = !isPaused;
+
+        if (isSpawned)
+        {
+            // Ghi SyncVar → PurrNet tự đồng bộ cho tất cả client (kể cả late joiner)
+            syncPaused.value = newPaused;
+            // Vẫn gửi RPC để áp dụng ngư thì lập trên host (vì onChanged chỉ trigger trên client)
+            RpcSetPause(newPaused);
+        }
+        else
+            ApplyPause(newPaused);    // Offline mode
+    }
+
+    /// <summary>
+    /// Chỉ pause local (không gửi RPC). Dùng cho client đã chết cần hiện pause panel để Quit.
+    /// Time.timeScale không được sync qua mạng nên chỉ ảnh hưởng máy này.
+    /// </summary>
+    public void TogglePauseLocal()
+    {
+        // Chỉ hiện/ẩn panel local để client đã chết có thể Quit.
+        // Không được đụng vào isPaused (state đồng bộ từ server) và không đổi timeScale.
+        if (pausePanel != null)
+            pausePanel.SetActive(!pausePanel.activeSelf);
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private void RpcSetPause(bool paused)
+    {
+        ApplyPause(paused);
+    }
+
+    private void ApplyPause(bool paused)
+    {
+        isPaused = paused;
         if (pausePanel != null)
             pausePanel.SetActive(isPaused);
+
+        RefreshGlobalTimeScale();
     }
 
     public void GoMainMenu()
@@ -234,7 +311,7 @@ public class GameManager : NetworkBehaviour
 
     private Player GetLocalPlayer()
     {
-        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        Player[] players = FindObjectsByType<Player>(FindObjectsInactive.Exclude);
         foreach (var p in players)
         {
             // Trả về nếu là Owner (Multiplayer) hoặc nếu game offline (!isSpawned)
@@ -250,7 +327,17 @@ public class GameManager : NetworkBehaviour
         if (player != null) player.AddSpeed(amount);
     }
 
-    public void UpgradeDamage(float amount) => BonusDamage += amount;
+    public void UpgradeDamage(float amount)
+    {
+        Player player = GetLocalPlayer();
+
+        if (!isSpawned)
+        {
+            BonusDamage += amount;
+        }
+
+        if (player != null) player.AddDamage(amount);
+    }
 
     public void UpgradeMaxHP(float amount)
     {
@@ -263,27 +350,36 @@ public class GameManager : NetworkBehaviour
 
     public void OpenShopForAll()
     {
-        if (isServer) RpcOpenShop();
+        if (!isServer) return;
+        syncShopOpen.value = true;
+        RpcOpenShop();
     }
 
     [ObserversRpc(runLocally: true)]
     private void RpcOpenShop()
     {
-        if (shopPanel != null) shopPanel.SetActive(true);
-        Time.timeScale = 0f;
+        ApplyShop(true);
     }
 
     public void CloseShopForAll()
     {
-        // Chỉ Server mới có quyền ra lệnh đóng Shop cho toàn mạng lưới
-        if (isServer) RpcCloseShop();
+        if (!isServer) return;
+        syncShopOpen.value = false;
+        RpcCloseShop();
     }
 
     [ObserversRpc(runLocally: true)]
     private void RpcCloseShop()
     {
-        if (shopPanel != null) shopPanel.SetActive(false);
-        Time.timeScale = 1f;
+        ApplyShop(false);
+    }
+
+    private void ApplyShop(bool open)
+    {
+        isShopOpen = open;
+        if (shopPanel != null) shopPanel.SetActive(open);
+
+        RefreshGlobalTimeScale();
     }
 
     public void GrantBonusCoinForAll(int amount)
@@ -297,17 +393,8 @@ public class GameManager : NetworkBehaviour
         CountCoin += amount;
     }
 
-    [ObserversRpc(runLocally: true)]
-    private void RpcAddScore(int amount)
-    {
-        Score += amount;
-    }
 
-    [ObserversRpc(runLocally: true)]
-    private void RpcAdvanceWave()
-    {
-        Wave++;
-    }
+
 
     // ─────────────────── UI CALLBACKS ────────────────────────
 
@@ -321,5 +408,26 @@ public class GameManager : NetworkBehaviour
     {
         if (txtScore != null)
             txtScore.text = score.ToString();
+    }
+
+    private void OnWaveChanged(int newWave)
+    {
+        wave = Mathf.Max(DefaultWave, newWave);
+    }
+
+    private void OnPausedChanged(bool paused)
+    {
+        ApplyPause(paused);
+    }
+
+    private void OnShopOpenChanged(bool open)
+    {
+        ApplyShop(open);
+    }
+
+    private void RefreshGlobalTimeScale()
+    {
+        // Khi pause HOẶC shop đang mở thì cả local simulation phải dừng.
+        Time.timeScale = (isPaused || isShopOpen) ? 0f : 1f;
     }
 }

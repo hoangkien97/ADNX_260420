@@ -50,7 +50,7 @@ public class EnemyDataManager : MonoBehaviour
     private void DelayedLoad()
     {
         Load();
-        Debug.Log("[EnemyDataManager] Tự động cập nhật data vì file JSON vừa thay đổi!");
+        //Debug.Log("[EnemyDataManager] Tự động cập nhật data vì file JSON vừa thay đổi!");
     }
 
     private void OnDestroy()

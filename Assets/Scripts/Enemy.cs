@@ -8,8 +8,8 @@ using PurrNet;
 /// - A* Pathfinding chỉ chạy trên Server (Host)
 /// - currentHp sync qua SyncVar → clients update HP bar
 /// - TakeDamage chỉ xử lý trên Server
-/// - Die → Server despawn + RpcSpawnLoot broadcast hiệu ứng
-/// - Tìm player gần nhất trong số 4 players
+/// - Die → Server despawn
+/// - Tìm player gần nhất 
 /// </summary>
 public class Enemy : NetworkBehaviour
 {
@@ -33,6 +33,7 @@ public class Enemy : NetworkBehaviour
 
     // Đồng bộ hệ số sức mạnh (Multiplier) cho Client để thanh HP và tốc độ chạy đúng
     [SerializeField] private SyncVar<float> syncMultiplier = new SyncVar<float>(1f, ownerAuth: false);
+
 
     private void ApplyDataSO()
     {
@@ -162,15 +163,10 @@ public class Enemy : NetworkBehaviour
         enterDamege    = baseEnterDamage * multiplier;
         stayDamege     = baseStayDamage  * multiplier;
 
-        // Set HP qua currentHp (nếu đã spawned, chỉ server ghi)
-        if (isSpawned)
-        {
-            if (isServer) currentHp.value = maxHp;
-        }
-        else
-        {
+        // SyncVar chỉ được ghi khi đã spawned + là Server
+        // Khi chưa spawned: OnSpawned sẽ tự set currentHp.value = maxHp sau
+        if (isSpawned && isServer)
             currentHp.value = maxHp;
-        }
 
         UpdateHpBar();
     }
@@ -195,15 +191,17 @@ public class Enemy : NetworkBehaviour
 
     protected virtual void Update()
     {
-        // AI chỉ server chạy
+        // AI chỉ server chạy (offline mode vẫn chạy bình thường)
         if (!isSpawned || isServer)
         {
             UpdatePathRequest();
             MoveToPlayer();
+            FlipEnemy();
         }
 
-        // ALL clients đều flip sprite
-        FlipEnemy();
+        // Giữ HP bar không bị xoay theo parent/sprite
+        if (hpBar != null)
+            hpBar.transform.rotation = Quaternion.identity;
     }
 
     // ─────────────────── PATHFINDING ─────────────────────────
@@ -362,12 +360,10 @@ public class Enemy : NetworkBehaviour
         if (targetPlayer == null || targetPlayer.IsDead)
             targetPlayer = FindNearestPlayer();
 
-        if (targetPlayer != null)
-            spriteRenderer.flipX =
-                targetPlayer.transform.position.x < transform.position.x;
-
-        if (hpBar != null)
-            hpBar.transform.rotation = Quaternion.identity;
+        if (targetPlayer != null && spriteRenderer != null)
+        {
+            spriteRenderer.flipX = targetPlayer.transform.position.x < transform.position.x;
+        }
     }
 
     // ─────────────────── DAMAGE & DEATH ──────────────────────
@@ -391,11 +387,9 @@ public class Enemy : NetworkBehaviour
 
     protected virtual void Die()
     {
-        // Cộng điểm CHỈ cho người bắn chết quái này
+        // Cộng điểm cho người bắn chết quái này
         if (lastKiller != null)
             lastKiller.AddKillScore();
-        else
-            GameManager.AddScore(); // Fallback (quái chết bởi nguyên nhân khác)
 
         if (isServer || !isSpawned)
             SpawnLoot(transform.position);
@@ -411,45 +405,16 @@ public class Enemy : NetworkBehaviour
             Destroy(gameObject);
     }
 
-    /// Sinh vật phẩm trên Server và đồng bộ qua mạng cho mọi người.
-    /// Sinh vật phẩm trên Server và đồng bộ qua mạng cho mọi người.
     private void SpawnLoot(Vector3 position)
     {
         GameObject prefab = GetDropPrefab();
         if (prefab == null) return;
 
-        if (isSpawned)
-        {
-            // Network mode: Spawn qua PurrNet
-            GameObject dropItem = UnityProxy.InstantiateDirectly(prefab);
-            dropItem.transform.position = position;
+        // PurrNet tự handle sync nếu đang online. Offline vẫn chạy bình thường.
+        GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
 
-            if (dropItem.TryGetComponent<PurrNet.NetworkIdentity>(out var netId))
-                netId.Spawn(prefab, networkManager);
-
-            // Cấy bộ đếm giờ vào Item, truyền thời gian lấy từ JSON
-            ItemDespawner despawner = dropItem.AddComponent<ItemDespawner>();
-            despawner.StartDespawn(GetDropLifetime());
-        }
-        else
-        {
-            // Offline mode
-            GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
-            Destroy(dropItem, GetDropLifetime());
-        }
-    }
-
-
-    private System.Collections.IEnumerator DespawnItemAfterDelay(GameObject item, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        if (item != null)
-        {
-            if (item.TryGetComponent<NetworkIdentity>(out var netId) && netId.isSpawned)
-                netId.Despawn();
-            else
-                Destroy(item);
-        }
+        ItemDespawner despawner = dropItem.AddComponent<ItemDespawner>();
+        despawner.StartDespawn(GetDropLifetime());
     }
 
     // ─────────────────── HP BAR ──────────────────────────────

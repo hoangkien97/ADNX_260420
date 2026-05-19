@@ -19,14 +19,11 @@ public class GameStartManager : MonoBehaviour
 
         if (bootstrap != null)
         {
-            // Mọi người đều thử làm Host. 
             // Ai bấm trước -> Chiếm được cổng mạng -> Làm Host.
-            // Ai bấm sau -> Bị kẹt cổng mạng -> NetworkBootstrap tự động bắt lỗi và chuyển thành Client.
             bootstrap.StartHostAndLoad("SampleScene");
         }
         else
         {
-            // Không có network → load thẳng như cũ
             SceneManager.LoadScene("SampleScene");
         }
     }

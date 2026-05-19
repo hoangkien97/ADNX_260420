@@ -41,6 +41,7 @@ public class NetworkBootstrap : MonoBehaviour
     }
 
     private bool wasClientConnected = false;
+    private bool isDisconnecting = false; // Chống gọi DisconnectAndLoad nhiều lần
 
     private void Update()
     {
@@ -55,23 +56,29 @@ public class NetworkBootstrap : MonoBehaviour
             // Bị mất kết nối từ Server (Host Quit hoặc rớt mạng)
             wasClientConnected = false;
             Debug.Log("[NetworkBootstrap] Bị mất kết nối với Server. Tự động quay về GameStart.");
-            DisconnectAndLoad("GameStart");
+            
+            // graceful = false vì server đã chết rồi, không cần chờ gửi RPC
+            DisconnectAndLoad("GameStart", graceful: false);
         }
     }
 
-    public void DisconnectAndLoad(string sceneName)
+    public void DisconnectAndLoad(string sceneName, bool graceful = true)
     {
-        StartCoroutine(DisconnectAndLoadCoroutine(sceneName));
+        if (isDisconnecting) return;
+        isDisconnecting = true;
+        StartCoroutine(DisconnectAndLoadCoroutine(sceneName, graceful));
     }
 
-    private System.Collections.IEnumerator DisconnectAndLoadCoroutine(string sceneName)
+    private System.Collections.IEnumerator DisconnectAndLoadCoroutine(string sceneName, bool graceful)
     {
-        // Bước 1: Báo Server despawn tất cả player của mình trước khi ngắt kết nối
-        // (gửi ServerRpc – phải chờ packet được gửi đi trước khi Disconnect)
-        Player.NotifyAllPlayersLeaving();
-        
-        // Chờ 5 frame để PurrNet kịp flush ServerRpc packet lên Server
-        for (int i = 0; i < 5; i++) yield return null;
+        if (graceful)
+        {
+            // Bước 1: Báo Server despawn tất cả player của mình trước khi ngắt kết nối
+            Player.NotifyAllPlayersLeaving();
+            
+            // Chờ 5 frame để PurrNet kịp flush ServerRpc packet lên Server
+            for (int i = 0; i < 5; i++) yield return null;
+        }
 
         // Bước 2: Ngắt kết nối
         Disconnect();
@@ -83,9 +90,11 @@ public class NetworkBootstrap : MonoBehaviour
             yield return null;
         }
 
-        // Chờ thêm 0.15s (đảm bảo PurrNet chạy xong ít nhất 2 Network Ticks để Cleanup dọn dẹp sạch sẽ)
-        yield return new WaitForSecondsRealtime(0.15f);
+        // Chờ thêm 0.15s nếu graceful
+        if (graceful)
+            yield return new WaitForSecondsRealtime(0.15f);
 
+        isDisconnecting = false;
         UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
     }
 

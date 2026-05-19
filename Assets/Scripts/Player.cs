@@ -30,6 +30,9 @@ public class Player : NetworkBehaviour
     private float baseSpeed;
     private float baseMaxHp;
 
+    // BonusDamage per-player: owner tự ghi, đồng bộ cho server/observers
+    [SerializeField] private SyncVar<float> bonusDamage = new SyncVar<float>(0f, ownerAuth: true);
+
     public float MaxHp => maxHp;
     public float MoveSpeed => speed;
     public bool IsDead => _isDead;
@@ -154,12 +157,27 @@ public class Player : NetworkBehaviour
 
     private void Update()
     {
-        // Vẫn cho phép bấm ESC để Pause dù đã chết (để có thể Quit)
         if (isOwner && Input.GetKeyDown(KeyCode.Escape))
         {
             if (gameManager == null)
                 gameManager = FindAnyObjectByType<GameManager>();
-            gameManager?.TogglePause();
+
+            if (_isDead && isSpawned && !isServer)
+            {
+                // Client đã chết: hiện/ẩn pause panel local để Quit
+                gameManager?.TogglePauseLocal();
+            }
+            else if (!isSpawned || isServer)
+            {
+                // Offline hoặc là Server/Host: pause toàn phòng
+                gameManager?.TogglePause();
+            }
+            else
+            {
+                // Client còn sống: chỉ hiện/ẩn pause panel local để Quit
+                // Không gửi RPC, không ảnh hưởng Server hay người chơi khác
+                gameManager?.TogglePauseLocal();
+            }
         }
 
         // Ngưng mọi tương tác di chuyển nếu đã chết
@@ -384,6 +402,14 @@ public class Player : NetworkBehaviour
         // Chỉ áp dụng local (shop riêng từng người)
         speed += amount;
     }
+
+    public void AddDamage(float amount)
+    {
+        // Per-player và có sync khi đang networked
+        bonusDamage.value += amount;
+    }
+
+    public float GetBonusDamage() => bonusDamage.value;
 
     // ─────────────────── CALLBACKS ───────────────────────────
 

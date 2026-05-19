@@ -76,16 +76,19 @@ public class PlayerCollition : NetworkBehaviour
         // 2. Nếu hợp lệ, Server gọi Despawn để xóa item khỏi tất cả các máy
         itemNetId.Despawn();
 
-        // 3. Server báo lại cho đúng người chơi này là "Bạn đã nhặt thành công, cộng máu/tiền đi"
-        RpcGrantPickup(isHeal, healValue);
+        // 3. Gửi kết quả TRỰC TIẾP đến đúng player đã nhặt (TargetRpc thay vì broadcast)
+        if (owner.HasValue)
+            RpcGrantPickup(owner.Value, isHeal, healValue);
     }
 
-    [ObserversRpc(runLocally: true)]
-    private void RpcGrantPickup(bool isHeal, float healValue)
+    /// <summary>
+    /// TargetRpc: Server gửi trực tiếp đến 1 client duy nhất (owner của nhân vật này).
+    /// Tiết kiệm băng thông hơn ObserversRpc vì không broadcast cho tất cả.
+    /// </summary>
+    [TargetRpc]
+    private void RpcGrantPickup(PlayerID target, bool isHeal, float healValue)
     {
-        // Nhận lệnh từ Server, chỉ Owner của nhân vật này mới thực hiện cộng tiền/máu để tránh cộng 2 lần trên máy người khác
-        if (!isOwner) return;
-
+        // Không cần if (!isOwner) vì TargetRpc đã gửi đúng người rồi
         ProcessPickupLocal(isHeal, healValue);
     }
 }

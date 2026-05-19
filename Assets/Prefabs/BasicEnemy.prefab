@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 5704514109253062273}
   - component: {fileID: 7363612741359138356}
   - component: {fileID: 6944145477491001122}
+  - component: {fileID: 9066962050152566520}
   m_Layer: 0
   m_Name: BasicEnemy
   m_TagString: Enemy
@@ -249,6 +250,10 @@ MonoBehaviour:
     _value: 100
     _ownerAuth: 0
     _sendIntervalInSeconds: 0
+  syncMultiplier:
+    _value: 1
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
 --- !u!114 &7363612741359138356
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,6 +306,32 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
+--- !u!114 &9066962050152566520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546538898548258549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cb763cfb0fbf2c44b3587223c4aad1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkReflection
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _trackedBehaviour: {fileID: 1996150713709093026}
+  _trackedFields:
+  - type: 1
+    name: flipX
+  _ownerAuth: 0
 --- !u!1001 &4008699001968184366
 PrefabInstance:
   m_ObjectHideFlags: 0
