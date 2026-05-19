@@ -41,30 +41,62 @@ public class NetworkBootstrap : MonoBehaviour
     }
 
     private bool wasClientConnected = false;
+    private bool wasServerConnected = false;
     private bool isDisconnecting = false; // Chống gọi DisconnectAndLoad nhiều lần
+    private bool isQuitting = false;      // Khi app/editor đang thoát, không chạy luồng disconnect nữa
+    private bool suppressAutoDropHandling = false; // Đang thoát có chủ đích => bỏ qua auto-detect mất host
 
     private void Update()
     {
+        if (isQuitting || isDisconnecting) return;
         if (networkManager == null) return;
+
+        if (networkManager.isServer)
+            wasServerConnected = true;
 
         if (networkManager.isClient)
         {
             wasClientConnected = true;
+            return;
         }
-        else if (wasClientConnected && !networkManager.isServer)
+
+        // Chỉ xử lý mất host cho PURE CLIENT (không phải host đã tự quit)
+        bool remoteServerLost = !suppressAutoDropHandling && wasClientConnected && !wasServerConnected &&
+                                !networkManager.isClient && !networkManager.isServer;
+        if (remoteServerLost)
         {
-            // Bị mất kết nối từ Server (Host Quit hoặc rớt mạng)
-            wasClientConnected = false;
-            Debug.Log("[NetworkBootstrap] Bị mất kết nối với Server. Tự động quay về GameStart.");
-            
-            // graceful = false vì server đã chết rồi, không cần chờ gửi RPC
-            DisconnectAndLoad("GameStart", graceful: false);
+            HandleRemoteServerLost();
         }
+    }
+
+    private void HandleRemoteServerLost()
+    {
+        wasClientConnected = false;
+        isDisconnecting = true;
+        Debug.Log("[NetworkBootstrap] Mất kết nối host. Quay về GameStart.");
+
+        Time.timeScale = 1f;
+
+        try { if (networkManager != null && networkManager.isClient) networkManager.StopClient(); } catch { }
+        if (networkManager != null)
+            networkManager.enabled = false;
+
+        StartCoroutine(DelayedLoadGameStart());
+    }
+
+    private System.Collections.IEnumerator DelayedLoadGameStart()
+    {
+        yield return null;
+        isDisconnecting = false;
+        UnityEngine.SceneManagement.SceneManager.LoadScene("GameStart");
     }
 
     public void DisconnectAndLoad(string sceneName, bool graceful = true)
     {
+        if (isQuitting) return;
         if (isDisconnecting) return;
+
+        suppressAutoDropHandling = true; // đây là thoát có chủ đích
         isDisconnecting = true;
         StartCoroutine(DisconnectAndLoadCoroutine(sceneName, graceful));
     }
@@ -78,23 +110,43 @@ public class NetworkBootstrap : MonoBehaviour
             
             // Chờ 5 frame để PurrNet kịp flush ServerRpc packet lên Server
             for (int i = 0; i < 5; i++) yield return null;
-        }
 
-        // Bước 2: Ngắt kết nối
-        Disconnect();
-        
-        // Chờ tối đa 3 giây để PurrNet thực sự ngắt kết nối
-        float waitStart = Time.realtimeSinceStartup;
-        while (Time.realtimeSinceStartup - waitStart < 3f && (networkManager.isServer || networkManager.isClient))
-        {
-            yield return null;
-        }
+            // Ngắt kết nối
+            Disconnect();
 
-        // Chờ thêm 0.15s nếu graceful
-        if (graceful)
+            // Chờ tối đa 3 giây để PurrNet thực sự ngắt kết nối (chờ state Disconnected hoàn toàn)
+            float waitStart = Time.realtimeSinceStartup;
+            while (networkManager != null &&
+                   (networkManager.serverState != ConnectionState.Disconnected ||
+                    networkManager.clientState != ConnectionState.Disconnected) &&
+                   Time.realtimeSinceStartup - waitStart < 3f)
+            {
+                yield return null;
+            }
+
             yield return new WaitForSecondsRealtime(0.15f);
+        }
+        // graceful=false được xử lý trực tiếp trong Update() — không vào nhanh đây nữa
+
+        // Nếu sau timeout vẫn còn connected -> hard stop + disable manager để chặn tick cleanup trên object đã Destroy
+        if (networkManager != null && (networkManager.isServer || networkManager.isClient))
+        {
+            try
+            {
+                if (networkManager.isServer) networkManager.StopServer();
+                if (networkManager.isClient) networkManager.StopClient();
+            }
+            catch { }
+        }
+
+        Time.timeScale = 1f;
+        if (networkManager != null)
+            networkManager.enabled = false;
 
         isDisconnecting = false;
+        suppressAutoDropHandling = false;
+        wasClientConnected = false;
+        wasServerConnected = false;
         UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
     }
 
@@ -113,6 +165,10 @@ public class NetworkBootstrap : MonoBehaviour
             SceneManager.LoadScene(sceneName);
             return;
         }
+
+        // Disconnect path có thể đã disable manager để chặn tick, cần bật lại trước khi StartHost
+        if (!networkManager.enabled)
+            networkManager.enabled = true;
 
         if (isStarting)
         {
@@ -134,7 +190,15 @@ public class NetworkBootstrap : MonoBehaviour
     private IEnumerator StartHostThenLoad(string sceneName)
     {
         // Chờ socket thực sự được giải phóng (release) nếu vừa gọi Stop
-        yield return new WaitWhile(() => networkManager.isServer || networkManager.isClient);
+        // TIMEOUT 5s: tránh kẹt vĩnh viễn nếu PurrNet không reset state
+        float releaseWait = Time.realtimeSinceStartup;
+        while (networkManager != null && 
+               (networkManager.serverState != ConnectionState.Disconnected || 
+                networkManager.clientState != ConnectionState.Disconnected) && 
+               Time.realtimeSinceStartup - releaseWait < 5f)
+        {
+            yield return null;
+        }
 
         // Đọc port thực tế từ Transport (Hỗ trợ cả UDP và Web/TCP)
         ushort serverPort = 5000;
@@ -228,6 +292,10 @@ public class NetworkBootstrap : MonoBehaviour
             return;
         }
 
+        // Disconnect path có thể đã disable manager để chặn tick, cần bật lại trước khi StartClient
+        if (!networkManager.enabled)
+            networkManager.enabled = true;
+
         // Thay vì check isClient, ta check clientState để bỏ qua nếu đang Connecting
         if (networkManager.clientState != ConnectionState.Disconnected)
         {
@@ -258,9 +326,33 @@ public class NetworkBootstrap : MonoBehaviour
     public void Disconnect()
     {
         if (networkManager == null) return;
-        if (networkManager.isServer) networkManager.StopServer();
-        if (networkManager.isClient) networkManager.StopClient();
+
+        try
+        {
+            if (networkManager.isServer) networkManager.StopServer();
+            if (networkManager.isClient) networkManager.StopClient();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[NetworkBootstrap] Disconnect lỗi (bỏ qua an toàn): {ex.Message}");
+        }
+
         Debug.Log("[NetworkBootstrap] Disconnected.");
+    }
+
+    private void OnApplicationQuit()
+    {
+        isQuitting = true;
+        Time.timeScale = 1f;
+
+        // Best-effort cleanup: tránh throw khi Unity đang teardown object order.
+        if (networkManager == null) return;
+        try
+        {
+            if (networkManager.isServer) networkManager.StopServer();
+            if (networkManager.isClient) networkManager.StopClient();
+        }
+        catch { }
     }
 
     /// <summary>

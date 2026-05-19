@@ -20,6 +20,9 @@ public class Player : NetworkBehaviour
     [SerializeField] private Image hpBar;
     private GameManager gameManager;
 
+    // Lấy config từ singleton thay vì kéo thả vào từng prefab
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
     // SyncVar: Server ghi, tất cả clients đọc (ownerAuth: false = chỉ server mới ghi)
     [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
 
@@ -138,8 +141,20 @@ public class Player : NetworkBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         networkAnimator = GetComponent<NetworkAnimator>();
 
+        ApplyGameConfig();
+
         baseSpeed = speed;
         baseMaxHp = maxHp;
+    }
+
+    private void ApplyGameConfig()
+    {
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            speed  = cfg.playerSpeed;
+            maxHp  = cfg.playerMaxHp;
+        }
     }
 
     private void Start()
@@ -266,7 +281,9 @@ public class Player : NetworkBehaviour
     private void CmdRequestResetState()
     {
         _isDead = false;
-        maxHp = baseMaxHp + GameManager.BonusMaxHP;
+        // Đọc bonus + base từ config (nếu có)
+        float configBase = GameConfig != null ? GameConfig.playerMaxHp : baseMaxHp;
+        maxHp = configBase + GameManager.BonusMaxHP;
         currentHp.value = maxHp;
         
         RpcResetVisuals();

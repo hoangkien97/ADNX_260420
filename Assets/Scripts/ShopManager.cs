@@ -14,6 +14,8 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private Text statHP;
     [SerializeField] private Text statSpeed;
     [SerializeField] private Text statDamage;
+
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
     private Player player;
     private Gun gun;
 
@@ -40,6 +42,31 @@ public class ShopManager : MonoBehaviour
 
     public void LoadPanel()
     {
+        // Override SO bằng giá trị từ JSON config nếu có
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            foreach (var so in shopItemsSO)
+            {
+                if (so == null) continue;
+                switch (so.itemType)
+                {
+                    case ShopItemType.UpgradeSpeed:
+                        so.baseCost = cfg.speedBaseCost;
+                        so.effectValue = cfg.speedEffectValue;
+                        break;
+                    case ShopItemType.UpgradeDamage:
+                        so.baseCost = cfg.damageBaseCost;
+                        so.effectValue = cfg.damageEffectValue;
+                        break;
+                    case ShopItemType.UpgradeMaxHP:
+                        so.baseCost = cfg.hpBaseCost;
+                        so.effectValue = cfg.hpEffectValue;
+                        break;
+                }
+            }
+        }
+
         for (int i = 0; i < shopItemsSO.Length; i++)
         {
             shopPanels[i].txtTitle.text = shopItemsSO[i].title;

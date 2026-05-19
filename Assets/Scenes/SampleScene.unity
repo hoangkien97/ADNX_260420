@@ -2806,8 +2806,20 @@ MonoBehaviour:
   _directChildren: []
   txtCoin: {fileID: 895394753}
   txtScore: {fileID: 430447076}
+  syncWave:
+    _value: 1
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
   pausePanel: {fileID: 343205616}
   shopPanel: {fileID: 1449621849}
+  syncPaused:
+    _value: 0
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+  syncShopOpen:
+    _value: 0
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
   musicSlider: {fileID: 1039979669}
   sfxToggle: {fileID: 1772209701}
 --- !u!1 &1032979819
@@ -3066,7 +3078,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e308dde2d720f9347874879dfc6540d1, type: 2}
   - {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
   - {fileID: 11400000, guid: c6a2fc13332a2a443b17511dc2bfa365, type: 2}
-  dataFileName: enemy_data.json
+  dataFileName: game_data.json
+  gameConfig: {fileID: 11400000, guid: 937c6cefd4b63d24fa2f82a31d015df8, type: 2}
 --- !u!4 &1078627307
 Transform:
   m_ObjectHideFlags: 0
@@ -3838,6 +3851,7 @@ MonoBehaviour:
   statHP: {fileID: 2131852228}
   statSpeed: {fileID: 1272976995}
   statDamage: {fileID: 1461663412}
+  gameConfig: {fileID: 0}
 --- !u!1 &1461663410
 GameObject:
   m_ObjectHideFlags: 0
@@ -4358,6 +4372,7 @@ MonoBehaviour:
   numberScale: 1.3
   shopPanel: {fileID: 1449621849}
   bonusCoin: 5
+  gameConfig: {fileID: 0}
 --- !u!1 &1611889015
 GameObject:
   m_ObjectHideFlags: 0

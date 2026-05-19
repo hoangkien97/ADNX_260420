@@ -293,6 +293,36 @@ public class GameManager : NetworkBehaviour
 
     public void GoMainMenu()
     {
+        // Nếu là Server/Host, báo cho tất cả client biết để tụi nó tự thoát
+        if (isSpawned && isServer)
+        {
+            RpcForceQuitToMenu();
+            // Host cần đợi 1 chút để RPC bay tới client rồi mới thoát, nếu không client sẽ kẹt
+            StartCoroutine(HostQuitCoroutine());
+        }
+        else
+        {
+            // Client thoát ngay
+            ExecuteQuitLocal();
+        }
+    }
+
+    private System.Collections.IEnumerator HostQuitCoroutine()
+    {
+        // Đợi một khoảng để RpcForceQuitToMenu kịp gửi qua mạng
+        yield return new WaitForSecondsRealtime(0.2f);
+        ExecuteQuitLocal();
+    }
+
+    [ObserversRpc(runLocally: false)]
+    private void RpcForceQuitToMenu()
+    {
+        Debug.Log("[GameManager] Nhận lệnh từ Host: Bắt buộc quay về GameStart.");
+        ExecuteQuitLocal();
+    }
+
+    private void ExecuteQuitLocal()
+    {
         ResetRunState();
         Time.timeScale = 1f;
 

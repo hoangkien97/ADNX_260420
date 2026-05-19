@@ -20,6 +20,8 @@ public class Gun : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI ammoText;
     [SerializeField] private AudioManager audioManager;
 
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
     // SyncVar ammo: owner ghi (ownerAuth:true), server xác nhận
     [SerializeField] private SyncVar<int> currentAmmo = new SyncVar<int>(10, ownerAuth: true);
 
@@ -44,6 +46,14 @@ public class Gun : NetworkBehaviour
     {
         base.OnSpawned(asServer);
 
+        // Áp config trước khi set ammo — OnSpawned chạy trước Start
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            shotDelay = cfg.shotDelay;
+            maxAmmo   = cfg.maxAmmo;
+        }
+
         if (isOwner)
         {
             currentAmmo.value = maxAmmo;
@@ -63,9 +73,15 @@ public class Gun : NetworkBehaviour
 
     private void Start()
     {
-        // Fallback offline
+        // Fallback offline: chưa spawn qua mạng
         if (!isSpawned)
         {
+            GameConfigSO cfg = GameConfig;
+            if (cfg != null)
+            {
+                shotDelay = cfg.shotDelay;
+                maxAmmo   = cfg.maxAmmo;
+            }
             currentAmmo.value = maxAmmo;
             UpdateAmmoText();
         }
