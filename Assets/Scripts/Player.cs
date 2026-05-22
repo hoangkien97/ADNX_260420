@@ -172,6 +172,11 @@ public class Player : NetworkBehaviour
 
     private void Update()
     {
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = Mathf.RoundToInt(-transform.position.y * 100);
+        }
+
         if (isOwner && Input.GetKeyDown(KeyCode.Escape))
         {
             if (gameManager == null)
@@ -306,6 +311,25 @@ public class Player : NetworkBehaviour
 
         Gun gun = GetComponentInChildren<Gun>(true);
         if (gun != null) gun.gameObject.SetActive(true);
+    }
+
+    // ─────────────────── CHAT SYSTEM ─────────────────────────
+
+    [ServerRpc(requireOwnership: true)]
+    public void CmdSendChat(string message)
+    {
+        Debug.Log($"[Server] Received CmdSendChat from {PlayerDisplayName}. Message: {message}");
+        RpcReceiveChat(PlayerDisplayName, message);
+    }
+
+    [ObserversRpc(runLocally: true)]
+    public void RpcReceiveChat(string senderName, string message)
+    {
+        Debug.Log($"[Client/Observer] Received RpcReceiveChat from {senderName}. Message: {message}");
+        if (ChatManager.Instance != null)
+        {
+            ChatManager.Instance.AddMessage(senderName, message);
+        }
     }
 
     /// <summary>

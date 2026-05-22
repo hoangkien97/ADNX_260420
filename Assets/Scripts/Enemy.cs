@@ -34,6 +34,9 @@ public class Enemy : NetworkBehaviour
     // Đồng bộ hệ số sức mạnh (Multiplier) cho Client để thanh HP và tốc độ chạy đúng
     [SerializeField] private SyncVar<float> syncMultiplier = new SyncVar<float>(1f, ownerAuth: false);
 
+    // Hệ số chuyển Y -> Z để xác định thứ tự render (giá trị nhỏ = gần camera = ở trên)
+    private const float ZDepthScale = 0.001f;
+
 
     private void ApplyDataSO()
     {
@@ -48,6 +51,7 @@ public class Enemy : NetworkBehaviour
     protected float      GetDropLifetime() => enemyData != null ? enemyData.dropLifetime : 7f;
 
     private SpriteRenderer spriteRenderer;
+    private Canvas hpBarCanvas;
     private Seeker seeker;
     private Path currentPath;
     private int currentWaypoint;
@@ -81,6 +85,18 @@ public class Enemy : NetworkBehaviour
         UpdateHpBar();
     }
 
+    /// <summary>
+    /// Gán Z dựa theo Y: con nào ở thấp hơn (Y nhỏ hơn) sẽ có Z lớn hơn (xa camera)
+    /// = chạy sau = bị che khuất. VỬng ứng với Orthographic Camera 2D.
+    /// Chỉ cần gọi trên Server vì NetworkTransform sẽ tự sync Z xuống Client.
+    /// </summary>
+    private void UpdateZDepth()
+    {
+        float targetZ = transform.position.y * ZDepthScale;
+        if (Mathf.Abs(transform.position.z - targetZ) > 0.0001f)
+            transform.position = new Vector3(transform.position.x, transform.position.y, targetZ);
+    }
+
     protected override void OnDespawned(bool asServer)
     {
         base.OnDespawned(asServer);
@@ -94,6 +110,10 @@ public class Enemy : NetworkBehaviour
     {
         ApplyDataSO();
         spriteRenderer = GetComponent<SpriteRenderer>();
+
+        if (hpBar != null)
+            hpBarCanvas = hpBar.GetComponentInParent<Canvas>();
+
         seeker = GetComponent<Seeker>();
         if (seeker == null)
             seeker = gameObject.AddComponent<Seeker>();
@@ -191,6 +211,20 @@ public class Enemy : NetworkBehaviour
 
     protected virtual void Update()
     {
+        if (spriteRenderer != null)
+        {
+            // Không dùng sortingOrder nữa → dùng trục Z (sync qua NetworkTransform)
+            spriteRenderer.sortingOrder = 0;
+        }
+
+        // HP bar UI đang nằm trong Canvas riêng, cần ép Canvas sort theo Z đã sync từ Server
+        if (hpBarCanvas != null)
+        {
+            hpBarCanvas.overrideSorting = true;
+            int hpOrder = Mathf.RoundToInt(-transform.position.z * 1000000f);
+            hpBarCanvas.sortingOrder = hpOrder + 1;
+        }
+
         // AI chỉ server chạy (offline mode vẫn chạy bình thường)
         if (!isSpawned || isServer)
         {
@@ -213,6 +247,8 @@ public class Enemy : NetworkBehaviour
             targetPlayer = FindNearestPlayer();
             return;
         }
+
+        UpdateZDepth();
 
         if (TryMoveAlongPath()) return;
 

@@ -22,6 +22,9 @@ public class ShopManager : MonoBehaviour
 
     void OnEnable()
     {
+        // Bring Shop UI to the front so it doesn't get blocked by the Chat UI
+        transform.SetAsLastSibling();
+
         for (int i = 0; i < shopItemsSO.Length; i++)
         {
             shopPanelsGO[i].SetActive(true);

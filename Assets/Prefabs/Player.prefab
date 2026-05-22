@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5005546437238301632}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: firePos
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -43,7 +43,7 @@ GameObject:
   - component: {fileID: 2600597181928113346}
   - component: {fileID: 5457240488918747609}
   - component: {fileID: 4418996415483909898}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Gun
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 461220030118547257}
   - component: {fileID: 8249543089458070325}
   - component: {fileID: 2801104453048643876}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -273,8 +273,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 1509767873
-  m_SortingLayer: 1
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -2311659948842064771, guid: c63f3ee49b91e294fbef694211651c36, type: 3}
@@ -390,6 +390,10 @@ MonoBehaviour:
     _sendIntervalInSeconds: 0
   playerName:
     _value: 
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
+  bonusDamage:
+    _value: 0
     _ownerAuth: 1
     _sendIntervalInSeconds: 0
 --- !u!95 &3420491125172564070
@@ -564,7 +568,7 @@ GameObject:
   - component: {fileID: 1704876190978008698}
   - component: {fileID: 115573888664895718}
   - component: {fileID: 3686272508285289849}
-  m_Layer: 5
+  m_Layer: 7
   m_Name: txtNamePlayer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -701,7 +705,7 @@ GameObject:
   - component: {fileID: 1691443792153774937}
   - component: {fileID: 9135867839577481813}
   - component: {fileID: 3634625373025536721}
-  m_Layer: 5
+  m_Layer: 7
   m_Name: Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -839,6 +843,10 @@ PrefabInstance:
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
       objectReference: {fileID: 0}
+    - target: {fileID: 334970269513414521, guid: 31e09aab9d3de934e93311f769132e50, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 839945994736367490, guid: 31e09aab9d3de934e93311f769132e50, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -919,9 +927,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2835707553692599802, guid: 31e09aab9d3de934e93311f769132e50, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 5942737140233015510, guid: 31e09aab9d3de934e93311f769132e50, type: 3}
       propertyPath: m_Name
       value: HpBar
+      objectReference: {fileID: 0}
+    - target: {fileID: 5942737140233015510, guid: 31e09aab9d3de934e93311f769132e50, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

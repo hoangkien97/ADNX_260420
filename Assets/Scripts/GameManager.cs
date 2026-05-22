@@ -43,6 +43,10 @@ public class GameManager : NetworkBehaviour
     // Pause/Shop: server ghi, tất cả client nhận (bao gồm late joiner)
     [SerializeField] private SyncVar<bool> syncPaused   = new SyncVar<bool>(false, ownerAuth: false);
     [SerializeField] private SyncVar<bool> syncShopOpen = new SyncVar<bool>(false, ownerAuth: false);
+    
+    // Đồng bộ file JSON cấu hình từ Server xuống Client
+    [SerializeField] private SyncVar<string> syncGameConfigJson = new SyncVar<string>("", ownerAuth: false);
+
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Toggle sfxToggle;
     private static GameManager instance;
@@ -120,20 +124,36 @@ public class GameManager : NetworkBehaviour
     {
         base.OnSpawned(asServer);
 
-        syncWave.onChanged     += OnWaveChanged;
-        syncPaused.onChanged   += OnPausedChanged;
+        if (asServer)
+        {
+            // Server đọc JSON từ local và nạp vào SyncVar để đẩy xuống Client
+            if (EnemyDataManager.Instance != null)
+            {
+                syncGameConfigJson.value = EnemyDataManager.Instance.GetJsonString();
+            }
+        }
+        else
+        {
+            // Client kết nối vào -> Lấy JSON từ Server đè lên JSON local
+            if (!string.IsNullOrEmpty(syncGameConfigJson.value) && EnemyDataManager.Instance != null)
+            {
+                EnemyDataManager.Instance.LoadFromJsonString(syncGameConfigJson.value);
+            }
+        }
+
+        // Đăng ký sự kiện khi JSON thay đổi (phòng trường hợp late joiner hoặc server cập nhật data)
+        syncGameConfigJson.onChanged += OnGameConfigJsonChanged;
+
+        syncPaused.onChanged += ApplyPause;
         syncShopOpen.onChanged += OnShopOpenChanged;
+        
+        // Late-joiner nhận ngay trạng thái hiện tại
+        ApplyPause(syncPaused.value);
+        ApplyShop(syncShopOpen.value);
 
         // Server đảm bảo giá trị hợp lệ tối thiểu
         if (asServer)
             syncWave.value = Mathf.Max(DefaultWave, syncWave.value);
-
-        // Late joiner: áp dụng trạng thái hiện tại từ SyncVar
-        if (!asServer)
-        {
-            ApplyPause(syncPaused.value);
-            ApplyShop(syncShopOpen.value);
-        }
 
         UpdateScoreText();
     }
@@ -141,9 +161,17 @@ public class GameManager : NetworkBehaviour
     protected override void OnDespawned(bool asServer)
     {
         base.OnDespawned(asServer);
-        syncWave.onChanged     -= OnWaveChanged;
-        syncPaused.onChanged   -= OnPausedChanged;
+        syncGameConfigJson.onChanged -= OnGameConfigJsonChanged;
+        syncPaused.onChanged -= ApplyPause;
         syncShopOpen.onChanged -= OnShopOpenChanged;
+    }
+
+    private void OnGameConfigJsonChanged(string newJson)
+    {
+        if (!isServer && !string.IsNullOrEmpty(newJson) && EnemyDataManager.Instance != null)
+        {
+            EnemyDataManager.Instance.LoadFromJsonString(newJson);
+        }
     }
 
     // ─────────────────── UNITY LIFECYCLE ─────────────────────

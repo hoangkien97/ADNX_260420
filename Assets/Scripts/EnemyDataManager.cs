@@ -153,7 +153,10 @@ public class EnemyDataManager : MonoBehaviour
         GameData data = dataHandler.Load();
         if (data == null) return;
 
-        // 1. Enemy
+        ApplyDataToSO(data);
+    }
+    private void ApplyDataToSO(GameData data)
+    {
         var soMap = new Dictionary<string, EnemyDataSO>();
         foreach (EnemyDataSO so in allEnemyData)
             if (so != null && !soMap.ContainsKey(so.enemyName))
@@ -217,4 +220,37 @@ public class EnemyDataManager : MonoBehaviour
         System.IO.File.Delete(System.IO.Path.Combine(Application.persistentDataPath, dataFileName));
     }
 
+    // ─────────────────── MẠNG (MULTIPLAYER SYNC) ─────────────────
+    
+    public string GetJsonString()
+    {
+        if (dataHandler != null)
+        {
+            GameData data = dataHandler.Load();
+            if (data != null)
+            {
+                return JsonUtility.ToJson(data);
+            }
+        }
+        return "";
+    }
+
+    public void LoadFromJsonString(string jsonString)
+    {
+        if (string.IsNullOrEmpty(jsonString)) return;
+
+        try
+        {
+            GameData data = JsonUtility.FromJson<GameData>(jsonString);
+            if (data != null)
+            {
+                ApplyDataToSO(data);
+                Debug.Log("[EnemyDataManager] Đã cập nhật cấu hình từ Server (Multiplayer).");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EnemyDataManager] Lỗi khi đọc JSON từ Server: {e.Message}");
+        }
+    }
 }
