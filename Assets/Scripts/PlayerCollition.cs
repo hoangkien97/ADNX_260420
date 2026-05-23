@@ -52,43 +52,55 @@ public class PlayerCollition : NetworkBehaviour
         if (isHeal)
         {
             Player player = GetComponent<Player>();
-            if (player != null) player.Heal(healValue);
+            if (player != null && !isSpawned) player.Heal(healValue);
             audioManager?.PlayItemSound();
         }
         else
         {
-            GameManager.UpdateCoin();
-            if (txtCoin != null)
-                txtCoin.text = GameManager.CountCoin.ToString();
+            if (!isSpawned)
+            {
+                GameManager.UpdateCoin();
+                if (txtCoin != null)
+                    txtCoin.text = GameManager.CountCoin.ToString();
+            }
             audioManager?.PlayCoinSound();
         }
     }
 
     /// <summary>
-    /// Gửi yêu cầu nhặt đồ lên Server. Server sẽ là người phán xử ai nhặt được (để tránh 2 người nhặt cùng lúc).
+    /// Gửi yêu cầu nhặt đồ lên Server. Server sẽ phán xử và trực tiếp cộng chỉ số.
     /// </summary>
     [ServerRpc(requireOwnership: true)]
     private void CmdPickupItem(PurrNet.NetworkIdentity itemNetId, bool isHeal, float healValue)
     {
-        // 1. Server kiểm tra xem item này còn tồn tại không (chưa bị người khác nhặt mất)
+        // 1. Server kiểm tra xem item này còn tồn tại không
         if (itemNetId == null || !itemNetId.isSpawned) return;
 
-        // 2. Nếu hợp lệ, Server gọi Despawn để xóa item khỏi tất cả các máy
+        // 2. Nếu hợp lệ, Server gọi Despawn để xóa item
         itemNetId.Despawn();
+        
+        // 3. Trực tiếp cộng chỉ số trên Server
+        Player player = GetComponent<Player>();
+        if (player != null)
+        {
+            if (isHeal)
+                player.Heal(healValue);
+            else
+                player.AddCoins(1);
+        }
 
-        // 3. Gửi kết quả TRỰC TIẾP đến đúng player đã nhặt (TargetRpc thay vì broadcast)
+        // 4. Báo cho client play sound
         if (owner.HasValue)
-            RpcGrantPickup(owner.Value, isHeal, healValue);
+            RpcPlayPickupSound(owner.Value, isHeal);
     }
 
-    /// <summary>
-    /// TargetRpc: Server gửi trực tiếp đến 1 client duy nhất (owner của nhân vật này).
-    /// Tiết kiệm băng thông hơn ObserversRpc vì không broadcast cho tất cả.
-    /// </summary>
     [TargetRpc]
-    private void RpcGrantPickup(PlayerID target, bool isHeal, float healValue)
+    private void RpcPlayPickupSound(PlayerID target, bool isHeal)
     {
-        // Không cần if (!isOwner) vì TargetRpc đã gửi đúng người rồi
-        ProcessPickupLocal(isHeal, healValue);
+        // Nhận lệnh từ Server để phát âm thanh
+        if (isHeal)
+            audioManager?.PlayItemSound();
+        else
+            audioManager?.PlayCoinSound();
     }
 }

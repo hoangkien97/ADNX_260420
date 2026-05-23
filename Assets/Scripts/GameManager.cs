@@ -442,13 +442,19 @@ public class GameManager : NetworkBehaviour
 
     public void GrantBonusCoinForAll(int amount)
     {
-        if (isServer) RpcGrantBonusCoin(amount);
-    }
-
-    [ObserversRpc(runLocally: true)]
-    private void RpcGrantBonusCoin(int amount)
-    {
-        CountCoin += amount;
+        if (isSpawned && isServer)
+        {
+            Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+            foreach(var p in players)
+            {
+                if (p.isSpawned)
+                    p.AddCoins(amount);
+            }
+        }
+        else if (!isSpawned)
+        {
+            CountCoin += amount;
+        }
     }
 
 
