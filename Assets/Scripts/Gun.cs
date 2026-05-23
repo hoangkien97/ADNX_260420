@@ -20,6 +20,8 @@ public class Gun : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI ammoText;
     [SerializeField] private AudioManager audioManager;
 
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
     // SyncVar ammo: owner ghi (ownerAuth:true), server xác nhận
     [SerializeField] private SyncVar<int> currentAmmo = new SyncVar<int>(10, ownerAuth: true);
 
@@ -27,9 +29,14 @@ public class Gun : NetworkBehaviour
     {
         get
         {
+            float bonus = 0f;
+            Player p = GetComponentInParent<Player>();
+            if (p != null) bonus = p.GetBonusDamage();
+            else bonus = GameManager.BonusDamage; 
+
             if (bulletPrefabs != null && bulletPrefabs.TryGetComponent<PlayerBullet>(out PlayerBullet bullet))
-                return bullet.BaseDamage + GameManager.BonusDamage;
-            return GameManager.BonusDamage;
+                return bullet.BaseDamage + bonus;
+            return bonus;
         }
     }
 
@@ -38,6 +45,14 @@ public class Gun : NetworkBehaviour
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
+
+        // Áp config trước khi set ammo — OnSpawned chạy trước Start
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            shotDelay = cfg.shotDelay;
+            maxAmmo   = cfg.maxAmmo;
+        }
 
         if (isOwner)
         {
@@ -58,9 +73,15 @@ public class Gun : NetworkBehaviour
 
     private void Start()
     {
-        // Fallback offline
+        // Fallback offline: chưa spawn qua mạng
         if (!isSpawned)
         {
+            GameConfigSO cfg = GameConfig;
+            if (cfg != null)
+            {
+                shotDelay = cfg.shotDelay;
+                maxAmmo   = cfg.maxAmmo;
+            }
             currentAmmo.value = maxAmmo;
             UpdateAmmoText();
         }
@@ -126,11 +147,21 @@ public class Gun : NetworkBehaviour
         }
         else
         {
-            // Offline fallback: dùng InstantiateDirectly tránh bị PurrNet chặn
+            // Offline fallback: spawn bình thường
             if (bulletPrefabs != null)
             {
-                GameObject b = UnityProxy.InstantiateDirectly(bulletPrefabs);
+                GameObject b = Instantiate(bulletPrefabs);
                 b.transform.SetPositionAndRotation(firePos.position, firePos.rotation);
+
+                PlayerBullet pb = b.GetComponent<PlayerBullet>();
+                if (pb != null)
+                {
+                    Player p = GetComponentInParent<Player>();
+                    pb.SetShooter(p);
+
+                    float bonus = p != null ? p.GetBonusDamage() : GameManager.BonusDamage;
+                    pb.ApplyBonusDamage(bonus);
+                }
             }
         }
     }
@@ -156,23 +187,19 @@ public class Gun : NetworkBehaviour
     {
         if (bulletPrefabs == null) return;
 
-        // Spawn bullet dưới dạng thường – PurrNet sẽ tự track nếu có NetworkIdentity
-        GameObject bullet = UnityProxy.InstantiateDirectly(bulletPrefabs);
+        GameObject bullet = Instantiate(bulletPrefabs, position, rotation);
 
         // Gắn "thông tin người bắn" và áp BonusDamage TRƯỚC khi đặt vị trí
         // (tránh trường hợp quái đứng sát → trigger va chạm trước khi kịp cộng bonus)
         PlayerBullet pb = bullet.GetComponent<PlayerBullet>();
         if (pb != null)
         {
-            pb.SetShooter(GetComponentInParent<Player>());
-            pb.ApplyBonusDamage(GameManager.BonusDamage);
+            Player p = GetComponentInParent<Player>();
+            pb.SetShooter(p);
+
+            float bonus = p != null ? p.GetBonusDamage() : GameManager.BonusDamage;
+            pb.ApplyBonusDamage(bonus);
         }
-
-        bullet.transform.SetPositionAndRotation(position, rotation);
-
-        // Nếu bullet có NetworkIdentity, spawn nó lên network
-        if (bullet.TryGetComponent<NetworkIdentity>(out var netId))
-            netId.Spawn(bulletPrefabs, networkManager);
     }
 
     // ─────────────────── UI ──────────────────────────────────

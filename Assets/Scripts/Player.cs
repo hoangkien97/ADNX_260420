@@ -20,6 +20,15 @@ public class Player : NetworkBehaviour
     [SerializeField] private Image hpBar;
     private GameManager gameManager;
 
+    // Lấy config từ singleton thay vì kéo thả vào từng prefab
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
+    // Các chỉ số được Server quản lý tuyệt đối (ownerAuth: false)
+    [SerializeField] private SyncVar<int> myCoins = new SyncVar<int>(0, ownerAuth: false);
+    [SerializeField] private SyncVar<float> currentSpeed = new SyncVar<float>(5f, ownerAuth: false);
+    [SerializeField] private SyncVar<float> currentMaxHp = new SyncVar<float>(100f, ownerAuth: false);
+    [SerializeField] private SyncVar<float> currentDamage = new SyncVar<float>(50f, ownerAuth: false);
+
     // SyncVar: Server ghi, tất cả clients đọc (ownerAuth: false = chỉ server mới ghi)
     [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
 
@@ -29,9 +38,11 @@ public class Player : NetworkBehaviour
     private bool _isDead;
     private float baseSpeed;
     private float baseMaxHp;
+    private float baseDamage;
 
-    public float MaxHp => maxHp;
-    public float MoveSpeed => speed;
+    public float MaxHp => isSpawned ? currentMaxHp.value : maxHp;
+    public float MoveSpeed => isSpawned ? currentSpeed.value : speed;
+    public int MyCoins => isSpawned ? myCoins.value : GameManager.CountCoin;
     public bool IsDead => _isDead;
     public string PlayerDisplayName => isSpawned ? playerName.value : "Player";
 
@@ -53,8 +64,9 @@ public class Player : NetworkBehaviour
             networkManager.onPlayerLeft += OnOwnerLeft;
         }
 
-        // Subscribe SyncVar callback để update HP bar khi nhận giá trị mới
+        // Subscribe SyncVar callback để update UI
         currentHp.onChanged += OnHpChanged;
+        currentMaxHp.onChanged += OnHpChanged; // Cập nhật lại UI khi maxHp đổi
         playerName.onChanged += OnPlayerNameChanged;
 
         if (isOwner)
@@ -63,9 +75,6 @@ public class Player : NetworkBehaviour
             string name = ApiManager.IsLoggedIn ? ApiManager.CurrentUsername : "Guest_" + Random.Range(1000, 9999);
             
             playerName.value = name;
-
-            // Owner: áp bonus speed (tránh cộng dồn khi tái sử dụng Object Pool)
-            speed = baseSpeed + GameManager.BonusSpeed;
             
             // Tìm và gắn Cinemachine vào player này
             AssignCinemachineCamera();
@@ -82,6 +91,7 @@ public class Player : NetworkBehaviour
     {
         base.OnDespawned(asServer);
         currentHp.onChanged -= OnHpChanged;
+        currentMaxHp.onChanged -= OnHpChanged;
         playerName.onChanged -= OnPlayerNameChanged;
 
         if (asServer)
@@ -135,8 +145,24 @@ public class Player : NetworkBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         networkAnimator = GetComponent<NetworkAnimator>();
 
+        ApplyGameConfig();
+
         baseSpeed = speed;
         baseMaxHp = maxHp;
+        
+        // Cố gắng đọc base damage từ GunConfig nếu có (offline fallback)
+        GameConfigSO cfg = GameConfig;
+        baseDamage = cfg != null ? cfg.playerDamage : 50f;
+    }
+
+    private void ApplyGameConfig()
+    {
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            speed  = cfg.playerSpeed;
+            maxHp  = cfg.playerMaxHp;
+        }
     }
 
     private void Start()
@@ -144,9 +170,6 @@ public class Player : NetworkBehaviour
         // Fallback: chạy khi không có network (single-player / offline mode)
         if (!isSpawned)
         {
-            speed = baseSpeed + GameManager.BonusSpeed;
-            maxHp = baseMaxHp + GameManager.BonusMaxHP;
-            currentHp.value = maxHp;
             gameManager = FindAnyObjectByType<GameManager>();
             UpdateHpBar();
         }
@@ -154,12 +177,32 @@ public class Player : NetworkBehaviour
 
     private void Update()
     {
-        // Vẫn cho phép bấm ESC để Pause dù đã chết (để có thể Quit)
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = Mathf.RoundToInt(-transform.position.y * 100);
+        }
+
         if (isOwner && Input.GetKeyDown(KeyCode.Escape))
         {
             if (gameManager == null)
                 gameManager = FindAnyObjectByType<GameManager>();
-            gameManager?.TogglePause();
+
+            if (_isDead && isSpawned && !isServer)
+            {
+                // Client đã chết: hiện/ẩn pause panel local để Quit
+                gameManager?.TogglePauseLocal();
+            }
+            else if (!isSpawned || isServer)
+            {
+                // Offline hoặc là Server/Host: pause toàn phòng
+                gameManager?.TogglePause();
+            }
+            else
+            {
+                // Client còn sống: chỉ hiện/ẩn pause panel local để Quit
+                // Không gửi RPC, không ảnh hưởng Server hay người chơi khác
+                gameManager?.TogglePauseLocal();
+            }
         }
 
         // Ngưng mọi tương tác di chuyển nếu đã chết
@@ -212,7 +255,8 @@ public class Player : NetworkBehaviour
                 Debug.LogWarning("[Player] Rigidbody2D đang bị Static! Không thể di chuyển.");
                 return;
             }
-            rb.linearVelocity = input.normalized * speed;
+            float currentMoveSpeed = isSpawned ? currentSpeed.value : speed;
+            rb.linearVelocity = input.normalized * currentMoveSpeed;
         }
 
         if (input.x < 0)       spriteRenderer.flipX = true;
@@ -232,7 +276,8 @@ public class Player : NetworkBehaviour
         // Nếu đang networked, chỉ server mới được xử lý
         if (isSpawned && !isServer) return;
 
-        float newHp = Mathf.Clamp(currentHp.value - damage, 0f, maxHp);
+        float max = isSpawned ? currentMaxHp.value : maxHp;
+        float newHp = Mathf.Clamp(currentHp.value - damage, 0f, max);
         currentHp.value = newHp;
 
         if (newHp <= 0f && !_isDead)
@@ -248,8 +293,15 @@ public class Player : NetworkBehaviour
     private void CmdRequestResetState()
     {
         _isDead = false;
-        maxHp = baseMaxHp + GameManager.BonusMaxHP;
-        currentHp.value = maxHp;
+        
+        GameConfigSO cfg = GameConfig;
+        
+        // Khởi tạo các chỉ số trên Server
+        currentMaxHp.value = cfg != null ? cfg.playerMaxHp : baseMaxHp;
+        currentHp.value = currentMaxHp.value;
+        currentSpeed.value = cfg != null ? cfg.playerSpeed : baseSpeed;
+        currentDamage.value = cfg != null ? cfg.playerDamage : baseDamage;
+        myCoins.value = 0; // Reset ví tiền khi bắt đầu run mới
         
         RpcResetVisuals();
     }
@@ -271,6 +323,25 @@ public class Player : NetworkBehaviour
 
         Gun gun = GetComponentInChildren<Gun>(true);
         if (gun != null) gun.gameObject.SetActive(true);
+    }
+
+    // ─────────────────── CHAT SYSTEM ─────────────────────────
+
+    [ServerRpc(requireOwnership: true)]
+    public void CmdSendChat(string message)
+    {
+        Debug.Log($"[Server] Received CmdSendChat from {PlayerDisplayName}. Message: {message}");
+        RpcReceiveChat(PlayerDisplayName, message);
+    }
+
+    [ObserversRpc(runLocally: true)]
+    public void RpcReceiveChat(string senderName, string message)
+    {
+        Debug.Log($"[Client/Observer] Received RpcReceiveChat from {senderName}. Message: {message}");
+        if (ChatManager.Instance != null)
+        {
+            ChatManager.Instance.AddMessage(senderName, message);
+        }
     }
 
     /// <summary>
@@ -366,23 +437,68 @@ public class Player : NetworkBehaviour
         }
     }
 
+    public void AddCoins(int amount)
+    {
+        if (isSpawned && isServer)
+            myCoins.value += amount;
+        else if (!isSpawned)
+            GameManager.CountCoin += amount;
+    }
+
+    [ServerRpc(requireOwnership: true)]
+    public void CmdBuyShopItem(int itemType, int cost, float effectValue)
+    {
+        // 1. Kiểm tra ví tiền trên Server
+        if (myCoins.value >= cost)
+        {
+            // 2. Trừ tiền
+            myCoins.value -= cost;
+            
+            // 3. Tăng chỉ số an toàn trên Server
+            // itemType: 0 = Speed, 1 = Damage, 2 = MaxHP (Tương ứng với ShopItemType enum)
+            if (itemType == 0)
+                currentSpeed.value += effectValue;
+            else if (itemType == 1)
+                currentDamage.value += effectValue;
+            else if (itemType == 2)
+            {
+                currentMaxHp.value += effectValue;
+                currentHp.value += effectValue; // Thêm máu hiện tại luôn
+            }
+        }
+    }
+
     public void Heal(float healAmount)
     {
         if (isSpawned && !isServer) return;
-        currentHp.value = Mathf.Clamp(currentHp.value + healAmount, 0f, maxHp);
+        float max = isSpawned ? currentMaxHp.value : maxHp;
+        currentHp.value = Mathf.Clamp(currentHp.value + healAmount, 0f, max);
     }
 
+    // ─────────────────── OFFLINE FALLBACK STATS ───────────────────
     public void AddMaxHP(float amount)
     {
-        if (isSpawned && !isServer) return;
+        if (isSpawned) return;
         maxHp += amount;
         currentHp.value = Mathf.Clamp(currentHp.value + amount, 0f, maxHp);
     }
 
     public void AddSpeed(float amount)
     {
-        // Chỉ áp dụng local (shop riêng từng người)
+        if (isSpawned) return;
         speed += amount;
+    }
+
+    public void AddDamage(float amount)
+    {
+        // Thực tế Gun.cs tự cộng GameManager.BonusDamage nếu offline, nhưng ta vẫn giữ để tránh lỗi compile
+    }
+
+    public float GetBonusDamage() 
+    {
+        // currentDamage là tổng sát thương gốc + bonus, nên nếu súng chỉ cần tổng thì trả về currentDamage
+        // Hoặc trả về phần chênh lệch. Nếu offline, trả về biến tĩnh của GameManager.
+        return isSpawned ? (currentDamage.value - baseDamage) : GameManager.BonusDamage; 
     }
 
     // ─────────────────── CALLBACKS ───────────────────────────
@@ -403,7 +519,11 @@ public class Player : NetworkBehaviour
 
     private void UpdateHpBar()
     {
-        if (hpBar != null && maxHp > 0f)
-            hpBar.fillAmount = currentHp.value / maxHp;
+        if (hpBar != null)
+        {
+            float max = isSpawned ? currentMaxHp.value : maxHp;
+            if (max > 0f)
+                hpBar.fillAmount = currentHp.value / max;
+        }
     }
 }

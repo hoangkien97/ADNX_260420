@@ -14,12 +14,17 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private Text statHP;
     [SerializeField] private Text statSpeed;
     [SerializeField] private Text statDamage;
+
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
     private Player player;
     private Gun gun;
 
 
     void OnEnable()
     {
+        // Bring Shop UI to the front so it doesn't get blocked by the Chat UI
+        transform.SetAsLastSibling();
+
         for (int i = 0; i < shopItemsSO.Length; i++)
         {
             shopPanelsGO[i].SetActive(true);
@@ -30,16 +35,63 @@ public class ShopManager : MonoBehaviour
 
         LoadPanel();
         checkPurchaseable();
-        RefreshPlayerStatTexts();
     }
 
     void Update()
     {
+        if (player == null)
+            FindLocalPlayer();
 
+        if (player != null)
+        {
+            coin = player.MyCoins;
+            if (coinUI != null) coinUI.text = coin.ToString();
+            
+            checkPurchaseable();
+            RefreshPlayerStatTexts();
+        }
+    }
+
+    private void FindLocalPlayer()
+    {
+        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        foreach (var p in players)
+        {
+            if (!p.isSpawned || p.isOwner) 
+            {
+                player = p;
+                break;
+            }
+        }
     }
 
     public void LoadPanel()
     {
+        // Override SO bằng giá trị từ JSON config nếu có
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            foreach (var so in shopItemsSO)
+            {
+                if (so == null) continue;
+                switch (so.itemType)
+                {
+                    case ShopItemType.UpgradeSpeed:
+                        so.baseCost = cfg.speedBaseCost;
+                        so.effectValue = cfg.speedEffectValue;
+                        break;
+                    case ShopItemType.UpgradeDamage:
+                        so.baseCost = cfg.damageBaseCost;
+                        so.effectValue = cfg.damageEffectValue;
+                        break;
+                    case ShopItemType.UpgradeMaxHP:
+                        so.baseCost = cfg.hpBaseCost;
+                        so.effectValue = cfg.hpEffectValue;
+                        break;
+                }
+            }
+        }
+
         for (int i = 0; i < shopItemsSO.Length; i++)
         {
             shopPanels[i].txtTitle.text = shopItemsSO[i].title;
@@ -50,15 +102,23 @@ public class ShopManager : MonoBehaviour
 
     public void PurchaseItem(int btnNo)
     {
-        if (coin >= shopItemsSO[btnNo].baseCost)
+        if (player == null) return;
+        
+        ShopItemSO item = shopItemsSO[btnNo];
+        if (coin >= item.baseCost)
         {
-            coin -= shopItemsSO[btnNo].baseCost;
-            GameManager.CountCoin = coin;
-            coinUI.text = coin.ToString(); 
-
-            ApplyEffect(shopItemsSO[btnNo]);
-            checkPurchaseable();
-            RefreshPlayerStatTexts();
+            // Trả lệnh mua cho Server xử lý
+            if (player.isSpawned)
+            {
+                player.CmdBuyShopItem((int)item.itemType, item.baseCost, item.effectValue);
+            }
+            else
+            {
+                // Fallback offline
+                GameManager.CountCoin -= item.baseCost;
+                ApplyEffectOffline(item);
+            }
+            // Không tự update UI liền, chờ Server đổi MyCoins và Update() sẽ tự render lại
         }
     }
 
@@ -93,10 +153,10 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    private void ApplyEffect(ShopItemSO item)
+    private void ApplyEffectOffline(ShopItemSO item)
     {
         GameManager gm = FindAnyObjectByType<GameManager>();
-        if (gm == null) return;
+        if (gm == null || player == null) return;
 
         switch (item.itemType)
         {
@@ -114,17 +174,7 @@ public class ShopManager : MonoBehaviour
 
     private void RefreshPlayerStatTexts()
     {
-        // Luôn tìm lại local player vì nếu chơi lại hoặc có người mới vào, reference có thể sai
-        player = null;
-        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
-        foreach (var p in players)
-        {
-            if (!p.isSpawned || p.isOwner) 
-            {
-                player = p;
-                break;
-            }
-        }
+        if (player == null) FindLocalPlayer();
 
         if (player != null)
         {

@@ -306,7 +306,7 @@ MonoBehaviour:
   messageText: {fileID: 1738939939}
   loginButton: {fileID: 2034487262}
   registerButton: {fileID: 1248910072}
-  guestButton: {fileID: 0}
+  guestButton: {fileID: 1619429086}
 --- !u!1 &429033776
 GameObject:
   m_ObjectHideFlags: 0
@@ -1700,7 +1700,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 200002}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: LoginSceneManager, Assembly-CSharp
         m_MethodName: LoginGuest
         m_Mode: 1

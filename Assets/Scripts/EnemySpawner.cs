@@ -18,6 +18,8 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private GameObject shopPanel;
     [SerializeField] private int bonusCoin = 5;
 
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
     private int deadEnemiesCount = 0;
     private int enemiesSpawnedThisWave = 0;
     private float currentStatMultiplier = 1f;
@@ -30,6 +32,15 @@ public class EnemySpawner : MonoBehaviour
         {
             Debug.Log("[EnemySpawner] Client mode: skipping spawn logic.");
             return;
+        }
+
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            timeBetweenSpawns = cfg.timeBetweenSpawns;
+            maxEnemiesInWave = cfg.maxEnemiesInWave;
+            numberScale = cfg.numberScale;
+            bonusCoin = cfg.bonusCoin;
         }
 
         Time.timeScale = 1f;
@@ -63,7 +74,7 @@ public class EnemySpawner : MonoBehaviour
 
     private Vector3 GetSpawnPositionNearRandomPlayer()
     {
-        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
+        Player[] players = FindObjectsByType<Player>(FindObjectsInactive.Exclude);
         List<Player> alive = new List<Player>();
         foreach (var p in players)
             if (p != null && !p.IsDead && p.gameObject.activeInHierarchy)
@@ -100,22 +111,9 @@ public class EnemySpawner : MonoBehaviour
         if (enemyPrefabs == null || enemyPrefabs.Length == 0) return;
 
         GameObject prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
-        
-        // PurrNet tracking: dùng UnityProxy khi chưa track, Instantiate bình thường khi đã track
-        GameObject enemyObj;
-        if (NetworkManager.main != null && NetworkManager.main.sceneModule != null)
-            enemyObj = UnityProxy.InstantiateDirectly(prefab);
-        else
-            enemyObj = Instantiate(prefab);
 
-        enemyObj.transform.position = spawnPosition;
-        enemyObj.SetActive(true);
-
-        // BẮT BUỘC: Spawn lên mạng để sync tới Client
-        if (enemyObj.TryGetComponent<NetworkIdentity>(out var netId) && NetworkManager.main != null)
-        {
-            netId.Spawn(prefab, NetworkManager.main);
-        }
+        // PurrNet tự handle sync tới tất cả Client
+        GameObject enemyObj = Instantiate(prefab, spawnPosition, Quaternion.identity);
 
         Enemy e = enemyObj.GetComponent<Enemy>();
         if (e != null)

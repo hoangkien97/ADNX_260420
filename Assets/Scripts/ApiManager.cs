@@ -7,9 +7,6 @@ public class ApiManager : MonoBehaviour
 {
     public static ApiManager Instance;
 
-    private const string PLAYER_ID_KEY = "Api_PlayerId";
-    private const string USERNAME_KEY = "Api_Username";
-
     [SerializeField] private string baseUrl = "https://localhost:7277/api";
 
     public static int CurrentPlayerId { get; private set; }
@@ -39,23 +36,7 @@ public class ApiManager : MonoBehaviour
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        LoadStoredSession();
-    }
-
-    private void LoadStoredSession()
-    {
-        int savedPlayerId = PlayerPrefs.GetInt(PLAYER_ID_KEY, 0);
-        string savedUsername = PlayerPrefs.GetString(USERNAME_KEY, "");
-
-        if (savedPlayerId > 0 && !string.IsNullOrWhiteSpace(savedUsername))
-        {
-            CurrentPlayerId = savedPlayerId;
-            CurrentUsername = savedUsername;
-        }
-        else
-        {
-            ClearStoredSession();
-        }
+        ClearSession();
     }
 
     public void Login(string username, string password,
@@ -136,7 +117,7 @@ public class ApiManager : MonoBehaviour
 
     public void Logout()
     {
-        ClearStoredSession();
+        ClearSession();
     }
 
     IEnumerator PostRequest(string endpoint, string json,
@@ -189,19 +170,12 @@ public class ApiManager : MonoBehaviour
     {
         CurrentPlayerId = playerId;
         CurrentUsername = username;
-
-        PlayerPrefs.SetInt(PLAYER_ID_KEY, playerId);
-        PlayerPrefs.SetString(USERNAME_KEY, username);
-        PlayerPrefs.Save();
     }
 
-    private static void ClearStoredSession()
+    private static void ClearSession()
     {
         CurrentPlayerId = 0;
         CurrentUsername = "";
-        PlayerPrefs.DeleteKey(PLAYER_ID_KEY);
-        PlayerPrefs.DeleteKey(USERNAME_KEY);
-        PlayerPrefs.Save();
     }
 
     private string BuildUrl(string endpoint)
@@ -256,4 +230,3 @@ public class LocalhostCertificateHandler : CertificateHandler
     }
 }
 #endif
-

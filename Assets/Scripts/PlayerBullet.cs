@@ -15,10 +15,12 @@ public class PlayerBullet : NetworkBehaviour
     [SerializeField] private float damage = 50f;
     [SerializeField] private GameObject bloodPrefab;
 
+    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
+
     // Người bắn viên đạn này (dùng để cộng điểm đúng người)
     private Player shooter;
 
-    public float BaseDamage => damage;
+    public float BaseDamage => GameConfig != null ? GameConfig.playerDamage : damage;
 
     public void SetShooter(Player player) => shooter = player;
 
@@ -38,7 +40,8 @@ public class PlayerBullet : NetworkBehaviour
 
         if (asServer)
         {
-            // Chỉ đặt bộ đếm giờ tự hủy (bonus damage đã được Gun áp trước đó)
+            GameConfigSO cfg = GameConfig;
+            if (cfg != null) timeDestroy = cfg.bulletTimeDestroy;
             Invoke(nameof(NetworkDespawn), timeDestroy);
         }
     }
@@ -47,10 +50,16 @@ public class PlayerBullet : NetworkBehaviour
 
     private void Start()
     {
+        GameConfigSO cfg = GameConfig;
+        if (cfg != null)
+        {
+            moveSpeed = cfg.bulletMoveSpeed;
+            timeDestroy = cfg.bulletTimeDestroy;
+        }
+
         // Fallback offline: destroy thẳng sau timeDestroy
         if (!isSpawned)
         {
-            damage += GameManager.BonusDamage;
             Destroy(gameObject, timeDestroy);
         }
     }
