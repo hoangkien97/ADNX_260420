@@ -1398,7 +1398,7 @@ MonoBehaviour:
   _transport: {fileID: 1997236069}
   _networkPrefabs: {fileID: 11400000, guid: b9db17f26a5d5724cac19f83d438122a, type: 2}
   _networkAssets: {fileID: 0}
-  _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
+  _networkRules: {fileID: 11400000, guid: 57ad4cc976c21074181652c4f7179d44, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 0}
   _tickRate: 20

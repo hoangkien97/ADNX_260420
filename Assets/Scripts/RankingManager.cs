@@ -43,7 +43,7 @@ public class RankingManager : MonoBehaviour
         }
 
         SetLoadingRows();
-        ApiManager.EnsureInstance().GetLeaderboard(UpdateLeaderboardFromApi);
+        ServiceLocator.Get<ILeaderboardService>().GetLeaderboard(UpdateLeaderboardFromApi);
     }
 
     private void SetLoadingRows()
@@ -156,12 +156,13 @@ public class RankingManager : MonoBehaviour
             return false;
         }
 
-        if (!ApiManager.IsLoggedIn)
+        IAuthService auth = ServiceLocator.Get<IAuthService>();
+        if (!auth.IsLoggedIn)
         {
             return false;
         }
 
-        string currentUsername = ApiManager.CurrentUsername;
+        string currentUsername = auth.CurrentUsername;
         return string.Equals(entry.GetUsername(), currentUsername, System.StringComparison.OrdinalIgnoreCase);
     }
 

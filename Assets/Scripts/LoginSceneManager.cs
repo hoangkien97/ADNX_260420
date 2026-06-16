@@ -17,14 +17,14 @@ public class LoginSceneManager : MonoBehaviour
 
     private void Start()
     {
-        //ApiManager api = ApiManager.EnsureInstance();
-        //if (ApiManager.IsLoggedIn)
+        //IAuthService auth = ServiceLocator.Get<IAuthService>();
+        //if (auth.IsLoggedIn)
         //{
         //    SceneManager.LoadScene("GameStart");
         //    return;
         //}
 
-        //api.Logout();
+        //auth.Logout();
         
         if (loginButton != null)
             loginButton.onClick.AddListener(SubmitLogin);
@@ -50,7 +50,7 @@ public class LoginSceneManager : MonoBehaviour
     {
         if (busy) return;
        
-        ApiManager.EnsureInstance().Logout();
+        ServiceLocator.Get<IAuthService>().Logout();
         SceneManager.LoadScene("GameStart");
     }
 
@@ -73,7 +73,7 @@ public class LoginSceneManager : MonoBehaviour
         SetInteractable(false);
         SetMessage(register ? "Registering..." : "Signing in...");
 
-        ApiManager api = ApiManager.EnsureInstance();
+        IAuthService auth = ServiceLocator.Get<IAuthService>();
         System.Action<bool, string> callback = (success, message) =>
         {
             busy = false;
@@ -87,7 +87,7 @@ public class LoginSceneManager : MonoBehaviour
 
             if (register)
             {
-                api.Logout();
+                auth.Logout();
                 if (passwordInput != null)
                 {
                     passwordInput.text = "";
@@ -102,11 +102,11 @@ public class LoginSceneManager : MonoBehaviour
 
         if (register)
         {
-            api.Register(username, password, callback);
+            auth.Register(username, password, callback);
         }
         else
         {
-            api.Login(username, password, callback);
+            auth.Login(username, password, callback);
         }
     }
 

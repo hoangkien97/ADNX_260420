@@ -18,6 +18,9 @@ GameObject:
   - component: {fileID: 348027571714071524}
   - component: {fileID: 5677546510134420463}
   - component: {fileID: 587546028621425220}
+  - component: {fileID: 5923894801837278283}
+  - component: {fileID: 8557690945035408856}
+  - component: {fileID: 4923389502782137441}
   m_Layer: 8
   m_Name: CoinEnemy
   m_TagString: Enemy
@@ -245,11 +248,6 @@ MonoBehaviour:
   _invertedPathToNearestParent: 
   _directChildren: []
   enemyData: {fileID: 11400000, guid: be690af46eb19774abcc861be6611bfc, type: 2}
-  hpBar: {fileID: 7421538949082028604}
-  currentHp:
-    _value: 100
-    _ownerAuth: 0
-    _sendIntervalInSeconds: 0
   syncMultiplier:
     _value: 1
     _ownerAuth: 0
@@ -332,6 +330,74 @@ MonoBehaviour:
   - type: 1
     name: flipX
   _ownerAuth: 1
+--- !u!114 &5923894801837278283
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363658447288777243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f554e37ec458a464a9f752dbc249feb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyMovement
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+--- !u!114 &8557690945035408856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363658447288777243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4047cac97e0d40e4a8447d3e4527acd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  hpBar: {fileID: 7421538949082028604}
+  currentHp:
+    _value: 100
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+--- !u!114 &4923389502782137441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363658447288777243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b182615e377f424a935329d3b23ed8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyCombat
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
 --- !u!1001 &3255779205144813706
 PrefabInstance:
   m_ObjectHideFlags: 0

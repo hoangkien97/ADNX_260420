@@ -1,62 +1,25 @@
 using UnityEngine;
-using UnityEngine.UI;
-using Pathfinding;
 using PurrNet;
 
 /// <summary>
-/// Enemy với PurrNet multiplayer support.
-/// - A* Pathfinding chỉ chạy trên Server (Host)
-/// - currentHp sync qua SyncVar → clients update HP bar
-/// - TakeDamage chỉ xử lý trên Server
-/// - Die → Server despawn
-/// - Tìm player gần nhất 
+/// Trọng tài (Coordinator) cho Quái vật.
+/// Lưu trữ cấu hình EnemyDataSO và chia sẻ số liệu (Máu, Tốc độ) cho các Component con.
+/// Tự động yêu cầu gắn thêm Movement, Health và Combat.
 /// </summary>
+[RequireComponent(typeof(EnemyMovement))]
+[RequireComponent(typeof(EnemyHealth))]
+[RequireComponent(typeof(EnemyCombat))]
 public class Enemy : NetworkBehaviour
 {
     [SerializeField] private EnemyDataSO enemyData;
-
-    private float enemyMoveSpeed;
-    private float pathUpdateInterval = 0.3f;
-    private float waypointReachDistance = 0.15f;
-    private float retargetInterval = 1f;     // Tần suất tìm lại player gần nhất (giây)
-    private float nextRetargetTime = 0f;
-
-    protected Player targetPlayer;
-    protected float maxHp;
-    [SerializeField] private Image hpBar;
-    protected float enterDamege;
-    protected float stayDamege;
-    protected EnemySpawner spawner;
-
-    // SyncVar HP: Server ghi, tất cả clients đọc
-    [SerializeField] private SyncVar<float> currentHp = new SyncVar<float>(100f, ownerAuth: false);
-
-    // Đồng bộ hệ số sức mạnh (Multiplier) cho Client để thanh HP và tốc độ chạy đúng
+    
+    // Multiplier được Server điều khiển để buff quái sau mỗi Wave
     [SerializeField] private SyncVar<float> syncMultiplier = new SyncVar<float>(1f, ownerAuth: false);
-
-    // Hệ số chuyển Y -> Z để xác định thứ tự render (giá trị nhỏ = gần camera = ở trên)
-    private const float ZDepthScale = 0.001f;
-
-
-    private void ApplyDataSO()
-    {
-        if (enemyData == null) return;
-        enemyMoveSpeed = enemyData.moveSpeed;
-        maxHp          = enemyData.maxHp;
-        enterDamege    = enemyData.enterDamage;
-        stayDamege     = enemyData.stayDamage;
-    }
-
-    protected GameObject GetDropPrefab()   => enemyData != null ? enemyData.dropPrefab  : null;
-    protected float      GetDropLifetime() => enemyData != null ? enemyData.dropLifetime : 7f;
-
-    private SpriteRenderer spriteRenderer;
-    private Canvas hpBarCanvas;
-    private Seeker seeker;
-    private Path currentPath;
-    private int currentWaypoint;
-    private float nextPathRequestTime;
-    private float movementPlaneZ;
+    
+    private float enemyMoveSpeed;
+    private float maxHp;
+    private float enterDamage;
+    private float stayDamage;
 
     private float baseMoveSpeed;
     private float baseMaxHp;
@@ -64,430 +27,90 @@ public class Enemy : NetworkBehaviour
     private float baseStayDamage;
     private bool statsInitialized = false;
 
-    // ─────────────────── NETWORK LIFECYCLE ───────────────────
+    private EnemySpawner spawner;
 
-    protected override void OnSpawned(bool asServer)
-    {
-        base.OnSpawned(asServer);
-        currentHp.onChanged += OnHpChanged;
-        syncMultiplier.onChanged += OnMultiplierChanged;
+    public EnemyDataSO Data => enemyData;
+    public float MoveSpeed => enemyMoveSpeed;
+    public float MaxHp => maxHp;
+    public float EnterDamage => enterDamage;
+    public float StayDamage => stayDamage;
 
-        if (asServer)
-        {
-            currentHp.value = maxHp;
-        }
-        else
-        {
-            // Client vừa vào game, áp dụng ngay multiplier từ Server
-            ApplyStatMultiplierLocal(syncMultiplier.value);
-        }
-
-        UpdateHpBar();
-    }
-
-    /// <summary>
-    /// Gán Z dựa theo Y: con nào ở thấp hơn (Y nhỏ hơn) sẽ có Z lớn hơn (xa camera)
-    /// = chạy sau = bị che khuất. VỬng ứng với Orthographic Camera 2D.
-    /// Chỉ cần gọi trên Server vì NetworkTransform sẽ tự sync Z xuống Client.
-    /// </summary>
-    private void UpdateZDepth()
-    {
-        float targetZ = transform.position.y * ZDepthScale;
-        if (Mathf.Abs(transform.position.z - targetZ) > 0.0001f)
-            transform.position = new Vector3(transform.position.x, transform.position.y, targetZ);
-    }
-
-    protected override void OnDespawned(bool asServer)
-    {
-        base.OnDespawned(asServer);
-        currentHp.onChanged -= OnHpChanged;
-        syncMultiplier.onChanged -= OnMultiplierChanged;
-    }
-
-    // ─────────────────── UNITY LIFECYCLE ─────────────────────
-
-    protected virtual void Awake()
-    {
-        ApplyDataSO();
-        spriteRenderer = GetComponent<SpriteRenderer>();
-
-        if (hpBar != null)
-            hpBarCanvas = hpBar.GetComponentInParent<Canvas>();
-
-        seeker = GetComponent<Seeker>();
-        if (seeker == null)
-            seeker = gameObject.AddComponent<Seeker>();
-    }
-
-    protected virtual void OnEnable()
-    {
-        ApplyDataSO();
-        statsInitialized = false;
-
-        // Tìm player gần nhất
-        targetPlayer = FindNearestPlayer();
-        if (targetPlayer != null)
-        {
-            movementPlaneZ = targetPlayer.transform.position.z;
-            transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
-        }
-
-        ResetPathState();
-        RequestPath();
-    }
-
-    protected virtual void OnDisable()
-    {
-        if (seeker != null && !seeker.IsDone())
-            seeker.CancelCurrentPathRequest();
-        ResetPathState();
-    }
+    public System.Action<float> OnMultiplierChangedEvent;
 
     public void Initialize(EnemySpawner spawner)
     {
         this.spawner = spawner;
     }
+    
+    public void NotifyDied()
+    {
+        if (spawner != null) spawner.OnEnemyDied();
+    }
+
+    protected override void OnSpawned(bool asServer)
+    {
+        base.OnSpawned(asServer);
+        syncMultiplier.onChanged += OnMultiplierChanged;
+        
+        // Client vừa vào game, lập tức đồng bộ chỉ số
+        if (!asServer) ApplyStatMultiplierLocal(syncMultiplier.value);
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        base.OnDespawned(asServer);
+        syncMultiplier.onChanged -= OnMultiplierChanged;
+    }
+
+    private void Awake()
+    {
+        ApplyDataSO();
+    }
+
+    private void ApplyDataSO()
+    {
+        if (enemyData == null) return;
+        enemyMoveSpeed = enemyData.moveSpeed;
+        maxHp = enemyData.maxHp;
+        enterDamage = enemyData.enterDamage;
+        stayDamage = enemyData.stayDamage;
+    }
 
     public void ApplyStatMultiplier(float multiplier)
     {
-        // Server lưu biến đồng bộ, Client sẽ tự động nhận qua event OnMultiplierChanged
-        if (isSpawned && isServer)
-        {
-            syncMultiplier.value = multiplier;
-        }
-        
+        if (isSpawned && isServer) syncMultiplier.value = multiplier;
         ApplyStatMultiplierLocal(multiplier);
     }
 
     private void OnMultiplierChanged(float newMultiplier)
     {
-        if (!isServer)
-        {
-            ApplyStatMultiplierLocal(newMultiplier);
-        }
+        if (!isServer) ApplyStatMultiplierLocal(newMultiplier);
     }
 
     private void ApplyStatMultiplierLocal(float multiplier)
     {
         if (!statsInitialized)
         {
-            baseMoveSpeed   = enemyMoveSpeed;
-            baseMaxHp       = maxHp;
-            baseEnterDamage = enterDamege;
-            baseStayDamage  = stayDamege;
+            baseMoveSpeed = enemyMoveSpeed;
+            baseMaxHp = maxHp;
+            baseEnterDamage = enterDamage;
+            baseStayDamage = stayDamage;
             statsInitialized = true;
         }
 
-        enemyMoveSpeed = baseMoveSpeed   * multiplier;
-        maxHp          = baseMaxHp       * multiplier;
-        enterDamege    = baseEnterDamage * multiplier;
-        stayDamege     = baseStayDamage  * multiplier;
+        enemyMoveSpeed = baseMoveSpeed * multiplier;
+        maxHp = baseMaxHp * multiplier;
+        enterDamage = baseEnterDamage * multiplier;
+        stayDamage = baseStayDamage * multiplier;
 
-        // SyncVar chỉ được ghi khi đã spawned + là Server
-        // Khi chưa spawned: OnSpawned sẽ tự set currentHp.value = maxHp sau
-        if (isSpawned && isServer)
-            currentHp.value = maxHp;
-
-        UpdateHpBar();
+        OnMultiplierChangedEvent?.Invoke(multiplier);
     }
-
-    protected virtual void Start()
-    {
-        targetPlayer = FindNearestPlayer();
-        if (targetPlayer != null)
-        {
-            movementPlaneZ = targetPlayer.transform.position.z;
-            transform.position = new Vector3(transform.position.x, transform.position.y, movementPlaneZ);
-        }
-
-        if (!isSpawned)
-        {
-            // Offline: khởi tạo bình thường
-            currentHp.value = maxHp;
-        }
-
-        UpdateHpBar();
-    }
-
-    protected virtual void Update()
-    {
-        if (spriteRenderer != null)
-        {
-            // Không dùng sortingOrder nữa → dùng trục Z (sync qua NetworkTransform)
-            spriteRenderer.sortingOrder = 0;
-        }
-
-        // HP bar UI đang nằm trong Canvas riêng, cần ép Canvas sort theo Z đã sync từ Server
-        if (hpBarCanvas != null)
-        {
-            hpBarCanvas.overrideSorting = true;
-            int hpOrder = Mathf.RoundToInt(-transform.position.z * 1000000f);
-            hpBarCanvas.sortingOrder = hpOrder + 1;
-        }
-
-        // AI chỉ server chạy (offline mode vẫn chạy bình thường)
-        if (!isSpawned || isServer)
-        {
-            UpdatePathRequest();
-            MoveToPlayer();
-            FlipEnemy();
-        }
-
-        // Giữ HP bar không bị xoay theo parent/sprite
-        if (hpBar != null)
-            hpBar.transform.rotation = Quaternion.identity;
-    }
-
-    // ─────────────────── PATHFINDING ─────────────────────────
-
-    protected void MoveToPlayer()
-    {
-        if (targetPlayer == null)
-        {
-            targetPlayer = FindNearestPlayer();
-            return;
-        }
-
-        UpdateZDepth();
-
-        if (TryMoveAlongPath()) return;
-
-        // Fallback: Nếu A* chưa có đường đi (đang tính toán), di chuyển thẳng về phía Player
-        Vector2 nextPosition = Vector2.MoveTowards(
-            transform.position, targetPlayer.transform.position, enemyMoveSpeed * Time.deltaTime);
-        transform.position = new Vector3(nextPosition.x, nextPosition.y, movementPlaneZ);
-    }
-
-    private void UpdatePathRequest()
-    {
-        if (AstarPath.active == null) return;
-
-        // Cập nhật target player: tìm lại nếu đang null/chết, hoặc theo chu kỳ retargetInterval
-        if (targetPlayer == null || targetPlayer.IsDead)
-        {
-            targetPlayer = FindNearestPlayer();
-            nextRetargetTime = Time.time + retargetInterval;
-        }
-        else if (Time.time >= nextRetargetTime)
-        {
-            // Tìm lại player gần nhất – nếu có player khác gần hơn thì đổi mục tiêu
-            Player nearest = FindNearestPlayer();
-            if (nearest != null && nearest != targetPlayer)
-            {
-                targetPlayer = nearest;
-            }
-            nextRetargetTime = Time.time + retargetInterval;
-        }
-
-        if (targetPlayer == null) return;
-        if (Time.time < nextPathRequestTime) return;
-
-        RequestPath();
-    }
-
-    private void RequestPath()
-    {
-        if (AstarPath.active == null || seeker == null || targetPlayer == null) return;
-        if (!seeker.IsDone()) return;
-
-        nextPathRequestTime = Time.time + pathUpdateInterval;
-        
-        // --- XỬ LÝ LƯỚI ĐA MỤC TIÊU ---
-        // Lấy đúng lưới A* đang bao quanh Player mục tiêu
-        int graphMask = MultiplayerGridManager.GetGraphMaskForPlayer(targetPlayer);
-        
-        if (graphMask != -1)
-            seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete, graphMask);
-        else
-            seeker.StartPath(transform.position, targetPlayer.transform.position, OnPathComplete);
-    }
-
-    private void OnPathComplete(Path path)
-    {
-        if (!isActiveAndEnabled || path == null || path.error ||
-            path.vectorPath == null || path.vectorPath.Count == 0)
-        {
-            currentPath = null;
-            return;
-        }
-
-        // --- XỬ LÝ LỖI INFINITY MAP ---
-        // Lấy điểm cuối cùng mà lưới A* vẽ ra được
-        if (targetPlayer != null)
-        {
-            Vector3 pathEndPos = path.vectorPath[path.vectorPath.Count - 1];
-            float distanceToRealTarget = Vector2.Distance(pathEndPos, targetPlayer.transform.position);
-            
-            // Nếu mép lưới cách quá xa Player thật (> 2 đơn vị),
-            // chứng tỏ Player đã ra khỏi vùng phủ sóng của A*.
-            // Ta hủy đường đi này để AI dùng phương án Fallback (bay thẳng)
-            if (distanceToRealTarget > 2f)
-            {
-                currentPath = null;
-                return;
-            }
-        }
-        // ------------------------------
-
-        currentPath = path;
-        currentWaypoint = 0;
-    }
-
-    private bool TryMoveAlongPath()
-    {
-        if (currentPath == null || currentPath.vectorPath == null || currentPath.vectorPath.Count == 0)
-            return false;
-
-        while (currentWaypoint < currentPath.vectorPath.Count - 1 &&
-               Vector2.Distance(transform.position,
-                   ToMovementPlanePoint(currentPath.vectorPath[currentWaypoint])) <= waypointReachDistance)
-        {
-            currentWaypoint++;
-        }
-
-        Vector3 targetPoint = ToMovementPlanePoint(currentPath.vectorPath[currentWaypoint]);
-        if (float.IsNaN(targetPoint.x) || float.IsNaN(targetPoint.y) ||
-            float.IsInfinity(targetPoint.x) || float.IsInfinity(targetPoint.y))
-            return false;
-
-        Vector2 nextPosition = Vector2.MoveTowards(transform.position, targetPoint, enemyMoveSpeed * Time.deltaTime);
-        transform.position = new Vector3(nextPosition.x, nextPosition.y, movementPlaneZ);
-        return true;
-    }
-
-    private void ResetPathState()
-    {
-        currentPath = null;
-        currentWaypoint = 0;
-        nextPathRequestTime = Time.time;
-    }
-
-    private Vector3 ToMovementPlanePoint(Vector3 pathPoint) =>
-        new Vector3(pathPoint.x, pathPoint.y, movementPlaneZ);
-
-    // ─────────────────── FIND NEAREST PLAYER ─────────────────
-
-    /// <summary>
-    /// Tìm Player còn sống gần nhất trong số tất cả players (tối đa 4).
-    /// </summary>
-    protected Player FindNearestPlayer()
-    {
-        Player[] allPlayers = FindObjectsByType<Player>(FindObjectsSortMode.None);
-        Player nearest = null;
-        float minDist = float.MaxValue;
-
-        foreach (Player p in allPlayers)
-        {
-            if (p == null || p.IsDead || !p.gameObject.activeInHierarchy) continue;
-
-            float dist = Vector2.Distance(transform.position, p.transform.position);
-            if (dist < minDist)
-            {
-                minDist = dist;
-                nearest = p;
-            }
-        }
-
-        return nearest;
-    }
-
-    protected void FlipEnemy()
-    {
-        if (targetPlayer == null || targetPlayer.IsDead)
-            targetPlayer = FindNearestPlayer();
-
-        if (targetPlayer != null && spriteRenderer != null)
-        {
-            spriteRenderer.flipX = targetPlayer.transform.position.x < transform.position.x;
-        }
-    }
-
-    // ─────────────────── DAMAGE & DEATH ──────────────────────
-
-    // Người cuối cùng gây sát thương (dùng để cộng điểm đúng người)
-    private Player lastKiller;
-
-    public virtual void TakeDamage(float damage, Player attacker = null)
-    {
-        // Chỉ Server xử lý
-        if (isSpawned && !isServer) return;
-
-        if (attacker != null) lastKiller = attacker;
-
-        float newHp = Mathf.Clamp(currentHp.value - damage, 0f, maxHp);
-        currentHp.value = newHp;
-
-        if (newHp <= 0f)
-            Die();
-    }
-
-    protected virtual void Die()
-    {
-        // Cộng điểm cho người bắn chết quái này
-        if (lastKiller != null)
-            lastKiller.AddKillScore();
-
-        if (isServer || !isSpawned)
-            SpawnLoot(transform.position);
-
-        if (spawner != null)
-        {
-            spawner.OnEnemyDied();
-        }
-        
-        if (isSpawned)
-            Despawn();
-        else
-            Destroy(gameObject);
-    }
-
-    private void SpawnLoot(Vector3 position)
-    {
-        GameObject prefab = GetDropPrefab();
-        if (prefab == null) return;
-
-        // PurrNet tự handle sync nếu đang online. Offline vẫn chạy bình thường.
-        GameObject dropItem = Instantiate(prefab, position, Quaternion.identity);
-
-        ItemDespawner despawner = dropItem.AddComponent<ItemDespawner>();
-        despawner.StartDespawn(GetDropLifetime());
-    }
-
-    // ─────────────────── HP BAR ──────────────────────────────
-
-    private void OnHpChanged(float newHp)
-    {
-        UpdateHpBar();
-    }
-
-    protected void UpdateHpBar()
-    {
-        if (hpBar != null && maxHp > 0f)
-            hpBar.fillAmount = currentHp.value / maxHp;
-    }
-
-    // ─────────────────── COLLISION ───────────────────────────
-
-    protected virtual void OnTriggerEnter2D(Collider2D collision)
-    {
-        // Chỉ Server xử lý damage
-        if (isSpawned && !isServer) return;
-
-        if (collision.CompareTag("Player"))
-        {
-            Player p = collision.GetComponent<Player>();
-            if (p != null) p.TakeDamage(enterDamege);
-        }
-    }
-
-    protected virtual void OnTriggerStay2D(Collider2D collision)
-    {
-        if (isSpawned && !isServer) return;
-
-        if (collision.CompareTag("Player"))
-        {
-            Player p = collision.GetComponent<Player>();
-            if (p != null) p.TakeDamage(stayDamege);
-        }
+    
+    // ─────────────────── LEGACY INTERFACE ─────────────────────────
+    
+    public void TakeDamage(float damage, Player attacker = null) 
+    { 
+        EnemyHealth health = GetComponent<EnemyHealth>();
+        if (health != null) health.TakeDamage(damage, attacker); 
     }
 }

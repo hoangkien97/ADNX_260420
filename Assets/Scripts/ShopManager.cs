@@ -1,145 +1,16 @@
 using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
+/// <summary>
+/// Trọng tài (Coordinator) cho hệ thống Shop theo chuẩn MVP.
+/// Đã tách logic UI (ShopView) và logic Data (ShopPresenter).
+/// Script này đóng vai trò giữ hàm ContinueGame() để Inspector gọi tới không bị lỗi.
+/// </summary>
+[RequireComponent(typeof(ShopView))]
+[RequireComponent(typeof(ShopPresenter))]
 public class ShopManager : MonoBehaviour
 {
-    public int coin;
-    public Text coinUI;
-    public ShopItemSO[] shopItemsSO;
-    public ShopTemplate[] shopPanels;
-    public GameObject[] shopPanelsGO;
-    public Button[] myPurchaseBtn;
-    [SerializeField] private Text statHP;
-    [SerializeField] private Text statSpeed;
-    [SerializeField] private Text statDamage;
-
-    private static GameConfigSO GameConfig => EnemyDataManager.Instance?.gameConfig;
-    private Player player;
-    private Gun gun;
-
-
-    void OnEnable()
-    {
-        // Bring Shop UI to the front so it doesn't get blocked by the Chat UI
-        transform.SetAsLastSibling();
-
-        for (int i = 0; i < shopItemsSO.Length; i++)
-        {
-            shopPanelsGO[i].SetActive(true);
-        }
-
-        coin = GameManager.CountCoin;
-        coinUI.text = coin.ToString();
-
-        LoadPanel();
-        checkPurchaseable();
-    }
-
-    void Update()
-    {
-        if (player == null)
-            FindLocalPlayer();
-
-        if (player != null)
-        {
-            coin = player.MyCoins;
-            if (coinUI != null) coinUI.text = coin.ToString();
-            
-            checkPurchaseable();
-            RefreshPlayerStatTexts();
-        }
-    }
-
-    private void FindLocalPlayer()
-    {
-        Player[] players = FindObjectsByType<Player>(FindObjectsSortMode.None);
-        foreach (var p in players)
-        {
-            if (!p.isSpawned || p.isOwner) 
-            {
-                player = p;
-                break;
-            }
-        }
-    }
-
-    public void LoadPanel()
-    {
-        // Override SO bằng giá trị từ JSON config nếu có
-        GameConfigSO cfg = GameConfig;
-        if (cfg != null)
-        {
-            foreach (var so in shopItemsSO)
-            {
-                if (so == null) continue;
-                switch (so.itemType)
-                {
-                    case ShopItemType.UpgradeSpeed:
-                        so.baseCost = cfg.speedBaseCost;
-                        so.effectValue = cfg.speedEffectValue;
-                        break;
-                    case ShopItemType.UpgradeDamage:
-                        so.baseCost = cfg.damageBaseCost;
-                        so.effectValue = cfg.damageEffectValue;
-                        break;
-                    case ShopItemType.UpgradeMaxHP:
-                        so.baseCost = cfg.hpBaseCost;
-                        so.effectValue = cfg.hpEffectValue;
-                        break;
-                }
-            }
-        }
-
-        for (int i = 0; i < shopItemsSO.Length; i++)
-        {
-            shopPanels[i].txtTitle.text = shopItemsSO[i].title;
-            shopPanels[i].txtDescription.text = shopItemsSO[i].description;
-            shopPanels[i].txtCost.text = shopItemsSO[i].baseCost.ToString();
-        }
-    }
-
-    public void PurchaseItem(int btnNo)
-    {
-        if (player == null) return;
-        
-        ShopItemSO item = shopItemsSO[btnNo];
-        if (coin >= item.baseCost)
-        {
-            // Trả lệnh mua cho Server xử lý
-            if (player.isSpawned)
-            {
-                player.CmdBuyShopItem((int)item.itemType, item.baseCost, item.effectValue);
-            }
-            else
-            {
-                // Fallback offline
-                GameManager.CountCoin -= item.baseCost;
-                ApplyEffectOffline(item);
-            }
-            // Không tự update UI liền, chờ Server đổi MyCoins và Update() sẽ tự render lại
-        }
-    }
-
-    public void checkPurchaseable()
-    {
-        for (int i = 0; i < shopItemsSO.Length; i++)
-        {
-            if (coin >= shopItemsSO[i].baseCost)
-            {
-                myPurchaseBtn[i].interactable = true;
-            }
-            else
-            {
-                myPurchaseBtn[i].interactable = false;
-            }
-        }
-    }
-
     public void ContinueGame()
     {
-        // Chỉ cho phép Host (Server) bấm nút này để đóng Shop cho toàn mạng lưới
         if (GameManager.Instance != null)
         {
             if (!GameManager.Instance.isServer) return;
@@ -147,54 +18,8 @@ public class ShopManager : MonoBehaviour
         }
         else
         {
-            // Fallback offline
             Time.timeScale = 1f;
             gameObject.SetActive(false);
         }
     }
-
-    private void ApplyEffectOffline(ShopItemSO item)
-    {
-        GameManager gm = FindAnyObjectByType<GameManager>();
-        if (gm == null || player == null) return;
-
-        switch (item.itemType)
-        {
-            case ShopItemType.UpgradeSpeed:
-                gm.UpgradeSpeed(item.effectValue);
-                break;
-            case ShopItemType.UpgradeDamage:
-                gm.UpgradeDamage(item.effectValue);
-                break;
-            case ShopItemType.UpgradeMaxHP:
-                gm.UpgradeMaxHP(item.effectValue);
-                break;
-        }
-    }
-
-    private void RefreshPlayerStatTexts()
-    {
-        if (player == null) FindLocalPlayer();
-
-        if (player != null)
-        {
-            gun = player.GetComponentInChildren<Gun>();
-        }
-
-        if (statHP != null)
-        {
-            statHP.text = player != null ? player.MaxHp.ToString("MaxHP : 0.##") : "N/A";
-        }
-
-        if (statSpeed != null)
-        {
-            statSpeed.text = player != null ? player.MoveSpeed.ToString("Speed : 0.##") : "N/A";
-        }
-
-        if (statDamage != null)
-        {
-            statDamage.text = gun != null ? gun.CurrentDamage.ToString("Damage : 0.##") : "N/A";
-        }
-    }
-
 }

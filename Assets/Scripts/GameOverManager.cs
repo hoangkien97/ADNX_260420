@@ -15,8 +15,7 @@ public class GameOverManager : MonoBehaviour
         if (rankingManager != null)
             rankingManager.RefreshUI();
 
-        ApiManager api = ApiManager.EnsureInstance();
-        api.PostScore(GameManager.Score, GameManager.Wave, success =>
+        ServiceLocator.Get<ILeaderboardService>().PostScore(GameManager.Score, GameManager.Wave, success =>
         {
             if (rankingManager != null)
             {

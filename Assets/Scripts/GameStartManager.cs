@@ -6,12 +6,12 @@ public class GameStartManager : MonoBehaviour
 {
     private void Start()
     {
-        ApiManager.EnsureInstance();
+        // Initialization handled by AppBootstrap
     }
 
     public void GameStart()
     {
-        ApiManager.EnsureInstance();
+        // Initialization handled by AppBootstrap
         GameManager.ResetRunState();
 
         NetworkBootstrap bootstrap = NetworkBootstrap.Instance
@@ -30,7 +30,7 @@ public class GameStartManager : MonoBehaviour
 
     public void Logout()
     {
-        ApiManager.EnsureInstance().Logout();
+        ServiceLocator.Get<IAuthService>().Logout();
         SceneManager.LoadScene("Login");
     }
 

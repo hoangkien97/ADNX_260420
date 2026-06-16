@@ -43,6 +43,9 @@ GameObject:
   - component: {fileID: 2600597181928113346}
   - component: {fileID: 5457240488918747609}
   - component: {fileID: 4418996415483909898}
+  - component: {fileID: 3075650883849453432}
+  - component: {fileID: 5389051479537572111}
+  - component: {fileID: 3702399970059148873}
   m_Layer: 7
   m_Name: Gun
   m_TagString: Untagged
@@ -146,16 +149,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  firePos: {fileID: 5005546437238301632}
-  bulletPrefabs: {fileID: 953220515813260995, guid: 59178ce6a24e81a428943ba37c7d86f4, type: 3}
-  shotDelay: 0.1
-  maxAmmo: 20
-  ammoText: {fileID: 3634625373025536721}
-  audioManager: {fileID: 0}
-  currentAmmo:
-    _value: 10
-    _ownerAuth: 1
-    _sendIntervalInSeconds: 0
 --- !u!114 &4418996415483909898
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,6 +177,70 @@ MonoBehaviour:
   - type: 1
     name: localScale
   _ownerAuth: 1
+--- !u!114 &3075650883849453432
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2063600471584402288}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91098b7b47ac4404c97ce849c8077af5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GunRotation
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+--- !u!114 &5389051479537572111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2063600471584402288}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 214efba2b1616db4184294c5f5ceae96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GunShooter
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  firePos: {fileID: 5005546437238301632}
+  bulletPrefabs: {fileID: 953220515813260995, guid: 59178ce6a24e81a428943ba37c7d86f4, type: 3}
+  shotDelay: 0.5
+  maxAmmo: 10
+  currentAmmo:
+    _value: 10
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
+--- !u!114 &3702399970059148873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2063600471584402288}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0429686dfc1f6a44f9fa69bf86abc45b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GunVisuals
+  ammoText: {fileID: 3634625373025536721}
+  audioManager: {fileID: 0}
 --- !u!1 &2369793308085483332
 GameObject:
   m_ObjectHideFlags: 0
@@ -204,6 +261,10 @@ GameObject:
   - component: {fileID: 461220030118547257}
   - component: {fileID: 8249543089458070325}
   - component: {fileID: 2801104453048643876}
+  - component: {fileID: 1235653761975359273}
+  - component: {fileID: 4407444400380329773}
+  - component: {fileID: 8483859043473588820}
+  - component: {fileID: 3484555964167629609}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -381,21 +442,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  speed: 8
-  maxHp: 500
-  hpBar: {fileID: 1657361487405542532}
-  currentHp:
-    _value: 100
-    _ownerAuth: 0
-    _sendIntervalInSeconds: 0
-  playerName:
-    _value: 
-    _ownerAuth: 1
-    _sendIntervalInSeconds: 0
-  bonusDamage:
-    _value: 0
-    _ownerAuth: 1
-    _sendIntervalInSeconds: 0
 --- !u!95 &3420491125172564070
 Animator:
   serializedVersion: 7
@@ -557,6 +603,108 @@ MonoBehaviour:
   _ownerAuth: 1
   _autoSyncParameters: 1
   _dontSyncParameters: []
+--- !u!114 &1235653761975359273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2369793308085483332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15df24e6046022643a87cb5e0fa63269, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+--- !u!114 &4407444400380329773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2369793308085483332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb1930a4b60e643488df6611b94fbaa5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  baseSpeed: 5
+  baseMaxHp: 100
+  myCoins:
+    _value: 0
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+  currentSpeed:
+    _value: 5
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+  currentMaxHp:
+    _value: 100
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+  currentDamage:
+    _value: 50
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+  playerName:
+    _value: 
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
+--- !u!114 &8483859043473588820
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2369793308085483332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f9960439a416af4989e8eedd619c5e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  currentHp:
+    _value: 100
+    _ownerAuth: 0
+    _sendIntervalInSeconds: 0
+--- !u!114 &3484555964167629609
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2369793308085483332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2590656527116e44a8d0bbca5e0a996, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerVisuals
+  hpBar: {fileID: 1657361487405542532}
 --- !u!1 &4380611392603439068
 GameObject:
   m_ObjectHideFlags: 0
